@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+settings/Testnet.toml
+
+# Build
+.next/
+out/
+dist/
+build/
+
+# Local
+.DS_Store
+*.log
+.idea/
+.vscode/
+
+# Clarinet
+.cache/

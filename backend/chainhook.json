@@ -1,0 +1,34 @@
+{
+    "uuid": "prediction-market-indexer",
+    "name": "Prediction Market Events",
+    "version": 1,
+    "chain": "stacks",
+    "networks": {
+        "testnet": {
+            "if_this": {
+                "scope": "print_event",
+                "contract_identifier": "ST1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX28M1PMM.prediction-market",
+                "contains": "event"
+            },
+            "then_that": {
+                "http_post": {
+                    "url": "http://localhost:3001/api/chainhook",
+                    "authorization_header": "Bearer prediction-market-secret"
+                }
+            }
+        },
+        "mainnet": {
+            "if_this": {
+                "scope": "print_event",
+                "contract_identifier": "YOUR_MAINNET_CONTRACT_ADDRESS.prediction-market",
+                "contains": "event"
+            },
+            "then_that": {
+                "http_post": {
+                    "url": "https://your-production-server.com/api/chainhook",
+                    "authorization_header": "Bearer prediction-market-secret"
+                }
+            }
+        }
+    }
+}

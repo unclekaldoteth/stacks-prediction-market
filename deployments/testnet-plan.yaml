@@ -1,0 +1,17 @@
+---
+id: 0
+name: Prediction Market Testnet Deployment
+network: testnet
+stacks-node: "https://api.testnet.hiro.so"
+bitcoin-node: "https://btc-testnet.hiro.so"
+
+plan:
+  batches:
+    - id: 0
+      transactions:
+        - contract-publish:
+            contract-name: prediction-market
+            expected-sender: ST1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX28M1PMM
+            path: contracts/prediction-market.clar
+            clarity-version: 2
+            cost: 1000000

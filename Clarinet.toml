@@ -1,0 +1,11 @@
+[project]
+name = "prediction-market"
+description = "Stacks Prediction Market - Binary Options on BTC Price"
+authors = []
+telemetry = false
+cache_dir = "./.cache"
+
+[contracts.prediction-market]
+path = "contracts/prediction-market.clar"
+clarity_version = 2
+epoch = 2.5
