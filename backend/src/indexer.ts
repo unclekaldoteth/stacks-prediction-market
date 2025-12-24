@@ -90,6 +90,7 @@ interface Round {
     winningDirection?: number;
     startBlock?: number;
     endBlock?: number;
+    startTime?: number; // Unix timestamp when round was synced
 }
 
 const bets: Bet[] = [];
@@ -449,6 +450,8 @@ async function syncRound(roundId: number) {
                     if (statusNum === 1) status = 'closed';
                     if (statusNum === 2) status = 'resolved';
 
+                    // Preserve existing startTime or set new one for open rounds
+                    const existingRound = rounds.get(roundId);
                     const round: Round = {
                         roundId,
                         status,
@@ -458,9 +461,10 @@ async function syncRound(roundId: number) {
                         poolDown: getNum(roundData['pool-down']),
                         winningDirection: getNum(roundData['winning-direction']),
                         startBlock: getNum(roundData['start-block']),
+                        startTime: existingRound?.startTime || (status === 'open' ? Math.floor(Date.now() / 1000) : undefined),
                     };
                     rounds.set(roundId, round);
-                    console.log(`   📊 Synced round #${roundId} - Status: ${status}, Start Price: $${round.startPrice?.toLocaleString()}`);
+                    console.log(`   Synced round #${roundId} - Status: ${status}, Start Price: $${round.startPrice?.toLocaleString()}`);
                 }
             } catch (parseError) {
                 console.error(`   Parse error for round ${roundId}:`, parseError);

@@ -1,40 +1,75 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
-import { WALLETCONNECT_PROJECT_ID } from '@/config';
+import { WALLETCONNECT_PROJECT_ID, MAGIC_API_KEY } from '@/config';
+
+type OAuthProvider = 'google' | 'github' | 'facebook' | 'apple';
 
 interface WalletContextType {
     isConnected: boolean;
     address: string | null;
+    email: string | null;
+    loginMethod: 'wallet' | 'email' | 'social' | null;
     connect: () => void;
+    connectWithEmail: (email: string) => Promise<void>;
+    connectWithSocial: (provider: OAuthProvider) => Promise<void>;
     disconnect: () => void;
+    isLoading: boolean;
 }
 
 const WalletContext = createContext<WalletContextType>({
     isConnected: false,
     address: null,
+    email: null,
+    loginMethod: null,
     connect: () => { },
+    connectWithEmail: async () => { },
+    connectWithSocial: async () => { },
     disconnect: () => { },
+    isLoading: false,
 });
 
 export function WalletProvider({ children }: { children: ReactNode }) {
     const [isConnected, setIsConnected] = useState(false);
     const [address, setAddress] = useState<string | null>(null);
+    const [email, setEmail] = useState<string | null>(null);
+    const [loginMethod, setLoginMethod] = useState<'wallet' | 'email' | 'social' | null>(null);
     const [isClient, setIsClient] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         setIsClient(true);
 
-        // Check if already connected on mount
         const checkConnection = async () => {
+            if (MAGIC_API_KEY) {
+                try {
+                    const { Magic } = await import('magic-sdk');
+                    const magic = new Magic(MAGIC_API_KEY);
+                    const isLoggedIn = await magic.user.isLoggedIn();
+                    if (isLoggedIn) {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const metadata = await (magic.user as any).getInfo();
+                        if (metadata?.publicAddress) {
+                            setIsConnected(true);
+                            setAddress(metadata.publicAddress);
+                            setEmail(metadata.email || null);
+                            setLoginMethod('email');
+                            return;
+                        }
+                    }
+                } catch (err) {
+                    console.log('Magic check failed:', err);
+                }
+            }
+
             try {
                 const { isConnected: checkIsConnected, getLocalStorage } = await import('@stacks/connect');
-
                 if (checkIsConnected()) {
                     const storage = getLocalStorage();
                     if (storage?.addresses?.stx?.[0]?.address) {
                         setIsConnected(true);
                         setAddress(storage.addresses.stx[0].address);
+                        setLoginMethod('wallet');
                     }
                 }
             } catch (err) {
@@ -51,7 +86,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         try {
             const { request, getLocalStorage } = await import('@stacks/connect');
 
-            // Use request with WalletConnect configuration
             const response = await request(
                 {
                     forceWalletSelect: true,
@@ -65,20 +99,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
             if (response && response.addresses && response.addresses.length > 0) {
                 setIsConnected(true);
-                // Find STX address - symbol may be undefined
+                setLoginMethod('wallet');
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const stxAddress = response.addresses.find((addr: any) => addr.symbol === 'STX');
-                if (stxAddress) {
-                    setAddress(stxAddress.address);
-                } else {
-                    setAddress(response.addresses[0].address);
-                }
+                setAddress(stxAddress?.address || response.addresses[0].address);
             } else {
-                // Fallback: check storage
                 const storage = getLocalStorage();
                 if (storage?.addresses?.stx?.[0]?.address) {
                     setIsConnected(true);
                     setAddress(storage.addresses.stx[0].address);
+                    setLoginMethod('wallet');
                 }
             }
         } catch (err) {
@@ -86,19 +116,137 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         }
     }, [isClient]);
 
+    const connectWithEmail = useCallback(async (emailAddress: string) => {
+        if (!isClient || typeof window === 'undefined' || !MAGIC_API_KEY) return;
+
+        setIsLoading(true);
+        try {
+            const { Magic } = await import('magic-sdk');
+            const magic = new Magic(MAGIC_API_KEY);
+
+            await magic.auth.loginWithMagicLink({ email: emailAddress });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const metadata = await (magic.user as any).getInfo();
+
+            if (metadata?.publicAddress) {
+                setIsConnected(true);
+                setAddress(metadata.publicAddress);
+                setEmail(emailAddress);
+                setLoginMethod('email');
+            }
+        } catch (err) {
+            console.error('Failed to connect with email:', err);
+            throw err;
+        } finally {
+            setIsLoading(false);
+        }
+    }, [isClient]);
+
+    const connectWithSocial = useCallback(async (provider: OAuthProvider) => {
+        if (!isClient || typeof window === 'undefined' || !MAGIC_API_KEY) return;
+
+        setIsLoading(true);
+        try {
+            const { Magic } = await import('magic-sdk');
+            const { OAuthExtension } = await import('@magic-ext/oauth2');
+
+            const magic = new Magic(MAGIC_API_KEY, {
+                extensions: [new OAuthExtension()],
+            });
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (magic as any).oauth2.loginWithRedirect({
+                provider,
+                redirectURI: window.location.origin,
+            });
+        } catch (err) {
+            console.error('Failed to connect with social:', err);
+            setIsLoading(false);
+            throw err;
+        }
+    }, [isClient]);
+
+    // Handle OAuth redirect callback
+    useEffect(() => {
+        const handleOAuthCallback = async () => {
+            if (!MAGIC_API_KEY || typeof window === 'undefined') return;
+
+            // Check for OAuth callback parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const hasOAuthCallback = urlParams.has('magic_oauth_request_id') ||
+                urlParams.has('code') ||
+                urlParams.has('state');
+
+            if (!hasOAuthCallback) return;
+
+            setIsLoading(true);
+            try {
+                const { Magic } = await import('magic-sdk');
+                const { OAuthExtension } = await import('@magic-ext/oauth2');
+
+                const magic = new Magic(MAGIC_API_KEY, {
+                    extensions: [new OAuthExtension()],
+                });
+
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const result = await (magic as any).oauth2.getRedirectResult();
+
+                if (result) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const metadata = await (magic.user as any).getInfo();
+                    if (metadata?.publicAddress) {
+                        setIsConnected(true);
+                        setAddress(metadata.publicAddress);
+                        setEmail(metadata.email || null);
+                        setLoginMethod('social');
+
+                        // Clean URL
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    }
+                }
+            } catch (err) {
+                console.error('OAuth callback error:', err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        if (isClient) {
+            handleOAuthCallback();
+        }
+    }, [isClient]);
+
     const disconnectWallet = useCallback(async () => {
         try {
-            const { disconnect: stacksDisconnect } = await import('@stacks/connect');
-            stacksDisconnect();
+            if ((loginMethod === 'email' || loginMethod === 'social') && MAGIC_API_KEY) {
+                const { Magic } = await import('magic-sdk');
+                const magic = new Magic(MAGIC_API_KEY);
+                await magic.user.logout();
+            } else {
+                const { disconnect: stacksDisconnect } = await import('@stacks/connect');
+                stacksDisconnect();
+            }
             setIsConnected(false);
             setAddress(null);
+            setEmail(null);
+            setLoginMethod(null);
         } catch (err) {
             console.error('Failed to disconnect:', err);
         }
-    }, []);
+    }, [loginMethod]);
 
     return (
-        <WalletContext.Provider value={{ isConnected, address, connect: connectWallet, disconnect: disconnectWallet }}>
+        <WalletContext.Provider value={{
+            isConnected,
+            address,
+            email,
+            loginMethod,
+            connect: connectWallet,
+            connectWithEmail,
+            connectWithSocial,
+            disconnect: disconnectWallet,
+            isLoading,
+        }}>
             {children}
         </WalletContext.Provider>
     );

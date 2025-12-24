@@ -9,9 +9,18 @@ export interface PriceData {
     lastUpdated: Date;
 }
 
+// Default fallback prices when API fails
+const FALLBACK_PRICES: PriceData = {
+    btc: 95000,
+    stx: 0.24,
+    btcChange24h: 0,
+    stxChange24h: 0,
+    lastUpdated: new Date(),
+};
+
 let cachedPrices: PriceData | null = null;
 let lastFetchTime: number = 0;
-const CACHE_DURATION = 30000; // 30 seconds cache
+const CACHE_DURATION = 60000; // 60 seconds cache (increased to reduce rate limiting)
 
 export async function getPrices(): Promise<PriceData> {
     const now = Date.now();
@@ -22,25 +31,32 @@ export async function getPrices(): Promise<PriceData> {
     }
 
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
         const response = await fetch(
             `${COINGECKO_API}/simple/price?ids=bitcoin,blockstack&vs_currencies=usd&include_24hr_change=true`,
             {
                 headers: {
                     'Accept': 'application/json',
                 },
-                next: { revalidate: 30 } // Next.js cache
+                signal: controller.signal,
             }
         );
 
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
-            throw new Error(`CoinGecko API error: ${response.status}`);
+            // Don't throw, just log and return fallback
+            console.warn(`CoinGecko API returned ${response.status}, using fallback prices`);
+            return cachedPrices || FALLBACK_PRICES;
         }
 
         const data = await response.json();
 
         cachedPrices = {
-            btc: data.bitcoin?.usd || 0,
-            stx: data.blockstack?.usd || 0,
+            btc: data.bitcoin?.usd || FALLBACK_PRICES.btc,
+            stx: data.blockstack?.usd || FALLBACK_PRICES.stx,
             btcChange24h: data.bitcoin?.usd_24h_change || 0,
             stxChange24h: data.blockstack?.usd_24h_change || 0,
             lastUpdated: new Date(),
@@ -49,20 +65,9 @@ export async function getPrices(): Promise<PriceData> {
 
         return cachedPrices;
     } catch (error) {
-        console.error('Failed to fetch prices:', error);
-
-        // Return cached data or defaults on error
-        if (cachedPrices) {
-            return cachedPrices;
-        }
-
-        return {
-            btc: 97500, // Fallback price
-            stx: 0.25,
-            btcChange24h: 0,
-            stxChange24h: 0,
-            lastUpdated: new Date(),
-        };
+        // Silently handle errors and return fallback
+        console.warn('Price fetch failed, using fallback:', error instanceof Error ? error.message : 'Unknown error');
+        return cachedPrices || FALLBACK_PRICES;
     }
 }
 
