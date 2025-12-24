@@ -1,10 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { CONTRACT_ADDRESS, CONTRACT_NAME, DIRECTION_UP, DIRECTION_DOWN, API_URL, WALLETCONNECT_PROJECT_ID } from '@/config';
 import { useWallet } from '@/context/WalletContext';
-
-const ROUND_DURATION = 60; // 1 minute in seconds
 
 interface Round {
     roundId: number;
@@ -15,78 +13,136 @@ interface Round {
     poolDown: number;
     winningDirection?: number;
     startBlock?: number;
-    startTime?: number; // Unix timestamp when round started
+    startTime?: number;
 }
 
+interface UserBet {
+    direction: number;
+    amount: number;
+    claimed: boolean;
+}
+
+type PendingAction = 'up' | 'down' | 'claim' | null;
+
 export default function BettingPanel() {
-    const { isConnected, connect } = useWallet();
+    const { isConnected, address, connect } = useWallet();
     const [amount, setAmount] = useState('1');
     const [currentRound, setCurrentRound] = useState<Round | null>(null);
+    const [userBet, setUserBet] = useState<UserBet | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [txStatus, setTxStatus] = useState<string | null>(null);
-    const [timeLeft, setTimeLeft] = useState<number>(0);
+    const [txSuccess, setTxSuccess] = useState(false);
+    const pendingActionRef = useRef<PendingAction>(null);
 
     const fetchCurrentRound = useCallback(async () => {
         try {
             const res = await fetch(`${API_URL}/api/rounds`);
+            if (!res.ok) return;
             const rounds: Round[] = await res.json();
             if (rounds.length > 0) {
                 const latest = rounds[rounds.length - 1];
-                // Set start time if not already set (first fetch)
-                if (!latest.startTime) {
-                    latest.startTime = Date.now() / 1000 - 5; // Assume just started
-                }
                 setCurrentRound(latest);
             } else {
                 setCurrentRound(null);
             }
         } catch {
-            setCurrentRound(null);
+            // API not available, show empty state
         }
     }, []);
 
-    useEffect(() => {
-        fetchCurrentRound();
-        const interval = setInterval(fetchCurrentRound, 10000);
-        return () => clearInterval(interval);
-    }, [fetchCurrentRound]);
-
-    // Timer countdown effect
-    useEffect(() => {
-        if (!currentRound || currentRound.status !== 'open') {
-            setTimeLeft(0);
+    // Fetch user's bet for current round
+    const fetchUserBet = useCallback(async () => {
+        if (!currentRound || !address) {
+            setUserBet(null);
             return;
         }
 
-        const updateTimer = () => {
-            const now = Date.now() / 1000;
-            const startTime = currentRound.startTime || now;
-            const elapsed = now - startTime;
-            const remaining = Math.max(0, ROUND_DURATION - elapsed);
-            setTimeLeft(Math.ceil(remaining));
-        };
+        try {
+            const { cvToValue, hexToCV } = await import('@stacks/transactions');
 
-        updateTimer();
-        const interval = setInterval(updateTimer, 1000);
+            const response = await fetch(
+                `https://api.testnet.hiro.so/v2/contracts/call-read/${CONTRACT_ADDRESS}/${CONTRACT_NAME}/get-bet`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sender: address,
+                        arguments: [
+                            // round-id as uint
+                            `0x0100000000000000000000000000000000${currentRound.roundId.toString(16).padStart(16, '0')}`.slice(0, 34),
+                            // user principal - simplified approach
+                        ],
+                    }),
+                }
+            );
+
+            // Fallback: Check from backend
+            const betRes = await fetch(`${API_URL}/api/bets?roundId=${currentRound.roundId}&user=${address}`);
+            if (betRes.ok) {
+                const bet = await betRes.json();
+                if (bet) {
+                    setUserBet(bet);
+                    return;
+                }
+            }
+            setUserBet(null);
+        } catch {
+            setUserBet(null);
+        }
+    }, [currentRound, address]);
+
+    useEffect(() => {
+        fetchCurrentRound();
+        const interval = setInterval(fetchCurrentRound, 5000); // Faster refresh
         return () => clearInterval(interval);
-    }, [currentRound]);
+    }, [fetchCurrentRound]);
+
+    useEffect(() => {
+        if (isConnected && currentRound) {
+            fetchUserBet();
+        }
+    }, [isConnected, currentRound, fetchUserBet]);
+
+    // Handle pending action after wallet connects
+    useEffect(() => {
+        if (isConnected && pendingActionRef.current) {
+            const action = pendingActionRef.current;
+            pendingActionRef.current = null;
+
+            if (action === 'up') {
+                placeBet(DIRECTION_UP);
+            } else if (action === 'down') {
+                placeBet(DIRECTION_DOWN);
+            } else if (action === 'claim') {
+                claimWinnings();
+            }
+        }
+    }, [isConnected]);
 
     async function placeBet(direction: number) {
         if (!isConnected) {
+            pendingActionRef.current = direction === DIRECTION_UP ? 'up' : 'down';
             connect();
             return;
         }
 
-        if (!currentRound) return;
+        if (!currentRound || currentRound.status !== 'open') return;
+        if (userBet) {
+            setTxStatus('You already have a bet on this round!');
+            return;
+        }
 
         setIsLoading(true);
-        setTxStatus('Preparing transaction...');
+        setTxStatus('Opening wallet...');
+        setTxSuccess(false);
 
         const amountMicroSTX = Math.floor(parseFloat(amount) * 1000000);
 
         try {
             const { request } = await import('@stacks/connect');
             const { uintCV, cvToHex } = await import('@stacks/transactions');
+
+            setTxStatus('Confirm in your wallet...');
 
             const response = await request(
                 {
@@ -107,79 +163,184 @@ export default function BettingPanel() {
             );
 
             if (response && response.txid) {
-                setTxStatus(`Transaction submitted! ID: ${response.txid.slice(0, 10)}...`);
+                setTxStatus(`Bet placed! TX: ${response.txid.slice(0, 10)}...`);
+                setTxSuccess(true);
+                // Set optimistic user bet
+                setUserBet({
+                    direction,
+                    amount: amountMicroSTX,
+                    claimed: false,
+                });
+                // Refresh after a delay
+                setTimeout(fetchCurrentRound, 3000);
             } else {
-                setTxStatus('Transaction completed!');
+                setTxStatus('Bet placed successfully!');
+                setTxSuccess(true);
             }
-            setIsLoading(false);
         } catch (err) {
             console.error('Transaction error:', err);
-            setTxStatus('Transaction failed or cancelled');
+            setTxStatus('Transaction cancelled');
+            setTxSuccess(false);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    async function claimWinnings() {
+        if (!isConnected) {
+            pendingActionRef.current = 'claim';
+            connect();
+            return;
+        }
+
+        if (!currentRound || currentRound.status !== 'resolved' || !userBet) return;
+
+        setIsLoading(true);
+        setTxStatus('Claiming winnings...');
+
+        try {
+            const { request } = await import('@stacks/connect');
+            const { uintCV, cvToHex } = await import('@stacks/transactions');
+
+            const response = await request(
+                {
+                    walletConnect: {
+                        projectId: WALLETCONNECT_PROJECT_ID,
+                    },
+                },
+                'stx_callContract',
+                {
+                    contract: `${CONTRACT_ADDRESS}.${CONTRACT_NAME}`,
+                    functionName: 'claim-winnings',
+                    functionArgs: [cvToHex(uintCV(currentRound.roundId))],
+                }
+            );
+
+            if (response?.txid) {
+                setTxStatus(`Winnings claimed! TX: ${response.txid.slice(0, 10)}...`);
+                setTxSuccess(true);
+                setUserBet({ ...userBet, claimed: true });
+            }
+        } catch (err) {
+            console.error('Claim error:', err);
+            setTxStatus('Claim failed or cancelled');
+        } finally {
             setIsLoading(false);
         }
     }
 
     const formatSTX = (microSTX: number) => (microSTX / 1000000).toFixed(2);
     const formatPrice = (price: number) => `$${price.toLocaleString()}`;
-    const formatTime = (seconds: number) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
 
     const totalPool = currentRound ? currentRound.poolUp + currentRound.poolDown : 0;
     const upPercent = totalPool > 0 ? ((currentRound?.poolUp || 0) / totalPool) * 100 : 50;
     const downPercent = 100 - upPercent;
 
-    const isTimerWarning = timeLeft > 0 && timeLeft <= 15;
-    const isTimerExpired = currentRound?.status === 'open' && timeLeft === 0;
+    // Calculate potential payout
+    const calculatePayout = (direction: number) => {
+        if (!currentRound || totalPool === 0) return 0;
+        const betAmount = parseFloat(amount) * 1000000;
+        const winningPool = direction === DIRECTION_UP ? currentRound.poolUp : currentRound.poolDown;
+        const newWinningPool = winningPool + betAmount;
+        const newTotalPool = totalPool + betAmount;
+        return (betAmount * newTotalPool) / newWinningPool;
+    };
+
+    // Determine if user won
+    const userWon = currentRound?.status === 'resolved' && userBet &&
+        userBet.direction === currentRound.winningDirection;
+    const userLost = currentRound?.status === 'resolved' && userBet &&
+        userBet.direction !== currentRound.winningDirection;
+
+    // Status display helper
+    const getStatusDisplay = () => {
+        if (!currentRound) return { text: 'NO ACTIVE ROUND', color: 'waiting' };
+
+        switch (currentRound.status) {
+            case 'open':
+                return { text: 'BETTING OPEN', color: 'open' };
+            case 'closed':
+                return { text: 'WAITING FOR RESULT', color: 'closed' };
+            case 'resolved':
+                const winner = currentRound.winningDirection === DIRECTION_UP ? 'UP WINS!' : 'DOWN WINS!';
+                return { text: winner, color: 'resolved' };
+            default:
+                return { text: 'UNKNOWN', color: 'waiting' };
+        }
+    };
+
+    const statusDisplay = getStatusDisplay();
 
     return (
         <div className="betting-panel">
+            {/* Round Header */}
             <div className="round-info">
                 <h2>Round #{currentRound?.roundId || '—'}</h2>
-                <div className="status-badge" data-status={currentRound?.status || 'waiting'}>
-                    {currentRound?.status?.toUpperCase() || 'NO ACTIVE ROUND'}
+                <div className="status-badge" data-status={statusDisplay.color}>
+                    {statusDisplay.text}
                 </div>
             </div>
 
-            {/* Countdown Timer */}
-            {currentRound?.status === 'open' && (
-                <div className={`timer-display ${isTimerWarning ? 'warning' : ''} ${isTimerExpired ? 'expired' : ''}`}>
-                    <span className="timer-label">Time Left</span>
-                    <span className="timer-value">
-                        {isTimerExpired ? 'ENDING SOON' : formatTime(timeLeft)}
-                    </span>
-                    <div className="timer-bar">
-                        <div
-                            className="timer-progress"
-                            style={{ width: `${(timeLeft / ROUND_DURATION) * 100}%` }}
-                        />
-                    </div>
-                </div>
-            )}
-
+            {/* No Round State */}
             {!currentRound && (
                 <div className="no-round-message">
-                    <p>Waiting for admin to start a new round...</p>
-                    <p className="hint">Go to <a href="/admin">Admin Panel</a> to start a round</p>
+                    <p>Waiting for a new round to start...</p>
+                    <p className="hint">Round will start automatically or check <a href="/admin">Admin Panel</a></p>
                 </div>
             )}
 
             {currentRound && (
                 <>
+                    {/* Price Display */}
                     <div className="price-display">
-                        <span className="label">BTC Start Price</span>
-                        <span className="price">{formatPrice(currentRound.startPrice || 0)}</span>
+                        <div className="price-row">
+                            <span className="label">Start Price</span>
+                            <span className="price">{formatPrice(currentRound.startPrice || 0)}</span>
+                        </div>
+                        {currentRound.status === 'resolved' && (
+                            <div className="price-row end-price">
+                                <span className="label">End Price</span>
+                                <span className="price">{formatPrice(currentRound.endPrice || 0)}</span>
+                            </div>
+                        )}
                     </div>
 
+                    {/* User's Current Bet Display */}
+                    {userBet && (
+                        <div className={`user-bet-status ${userWon ? 'won' : ''} ${userLost ? 'lost' : ''}`}>
+                            <div className="bet-info">
+                                <span className="bet-label">Your Bet</span>
+                                <span className={`bet-direction ${userBet.direction === DIRECTION_UP ? 'up' : 'down'}`}>
+                                    {userBet.direction === DIRECTION_UP ? 'UP' : 'DOWN'}
+                                </span>
+                                <span className="bet-amount">{formatSTX(userBet.amount)} STX</span>
+                            </div>
+                            {userWon && !userBet.claimed && (
+                                <button
+                                    className="claim-btn"
+                                    onClick={claimWinnings}
+                                    disabled={isLoading}
+                                >
+                                    Claim Winnings
+                                </button>
+                            )}
+                            {userWon && userBet.claimed && (
+                                <span className="claimed-badge">Claimed!</span>
+                            )}
+                            {userLost && (
+                                <span className="lost-badge">Better luck next time!</span>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Pool Bar */}
                     <div className="pool-container">
                         <div className="pool-bar">
                             <div className="pool-up" style={{ width: `${upPercent}%` }}>
-                                <span>{upPercent.toFixed(1)}%</span>
+                                {upPercent > 15 && <span>{upPercent.toFixed(0)}%</span>}
                             </div>
                             <div className="pool-down" style={{ width: `${downPercent}%` }}>
-                                <span>{downPercent.toFixed(1)}%</span>
+                                {downPercent > 15 && <span>{downPercent.toFixed(0)}%</span>}
                             </div>
                         </div>
                         <div className="pool-labels">
@@ -188,46 +349,66 @@ export default function BettingPanel() {
                         </div>
                     </div>
 
-                    <div className="bet-input">
-                        <label>Bet Amount (STX)</label>
-                        <input
-                            type="number"
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                            min="0.1"
-                            step="0.1"
-                            disabled={isLoading || currentRound.status !== 'open'}
-                        />
-                    </div>
+                    {/* Betting Section - Only show if round is open and user hasn't bet */}
+                    {currentRound.status === 'open' && !userBet && (
+                        <>
+                            <div className="bet-input">
+                                <label>Bet Amount (STX)</label>
+                                <div className="input-with-buttons">
+                                    <button onClick={() => setAmount('1')}>1</button>
+                                    <button onClick={() => setAmount('5')}>5</button>
+                                    <button onClick={() => setAmount('10')}>10</button>
+                                    <input
+                                        type="number"
+                                        value={amount}
+                                        onChange={(e) => setAmount(e.target.value)}
+                                        min="0.1"
+                                        step="0.1"
+                                        disabled={isLoading}
+                                    />
+                                </div>
+                            </div>
 
-                    <div className="bet-buttons">
-                        <button
-                            className="bet-up"
-                            onClick={() => placeBet(DIRECTION_UP)}
-                            disabled={isLoading || currentRound.status !== 'open'}
-                        >
-                            <span className="icon">UP</span>
-                            <span className="text">BET UP</span>
-                        </button>
-                        <button
-                            className="bet-down"
-                            onClick={() => placeBet(DIRECTION_DOWN)}
-                            disabled={isLoading || currentRound.status !== 'open'}
-                        >
-                            <span className="icon">DOWN</span>
-                            <span className="text">BET DOWN</span>
-                        </button>
-                    </div>
+                            <div className="bet-buttons">
+                                <button
+                                    className="bet-up"
+                                    onClick={() => placeBet(DIRECTION_UP)}
+                                    disabled={isLoading}
+                                >
+                                    <span className="direction">UP</span>
+                                    <span className="payout">~{formatSTX(calculatePayout(DIRECTION_UP))} STX</span>
+                                </button>
+                                <button
+                                    className="bet-down"
+                                    onClick={() => placeBet(DIRECTION_DOWN)}
+                                    disabled={isLoading}
+                                >
+                                    <span className="direction">DOWN</span>
+                                    <span className="payout">~{formatSTX(calculatePayout(DIRECTION_DOWN))} STX</span>
+                                </button>
+                            </div>
+                        </>
+                    )}
 
+                    {/* Closed Round Message */}
+                    {currentRound.status === 'closed' && (
+                        <div className="waiting-result">
+                            <div className="spinner"></div>
+                            <p>Waiting for price result...</p>
+                        </div>
+                    )}
+
+                    {/* Transaction Status */}
                     {txStatus && (
-                        <div className="tx-status">
+                        <div className={`tx-status ${txSuccess ? 'success' : ''}`}>
                             {txStatus}
                         </div>
                     )}
 
-                    {!isConnected && (
-                        <button className="connect-hint" onClick={connect}>
-                            Connect wallet to place bets
+                    {/* Connect Wallet Prompt */}
+                    {!isConnected && currentRound.status === 'open' && (
+                        <button className="connect-prompt" onClick={connect}>
+                            Connect Wallet to Place Bet
                         </button>
                     )}
                 </>

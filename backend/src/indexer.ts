@@ -298,8 +298,25 @@ app.get('/api/rounds/:id', (req: Request, res: Response) => {
     }
 });
 
-app.get('/api/bets', (_req: Request, res: Response) => {
-    res.json(bets);
+app.get('/api/bets', (req: Request, res: Response) => {
+    const { roundId, user } = req.query;
+
+    let filteredBets = bets;
+
+    if (roundId) {
+        filteredBets = filteredBets.filter(b => b.roundId === parseInt(roundId as string));
+    }
+
+    if (user) {
+        filteredBets = filteredBets.filter(b => b.user.toLowerCase() === (user as string).toLowerCase());
+    }
+
+    // If filtering by both, return single bet or null
+    if (roundId && user) {
+        res.json(filteredBets.length > 0 ? filteredBets[0] : null);
+    } else {
+        res.json(filteredBets);
+    }
 });
 
 app.get('/api/bets/:roundId', (req: Request, res: Response) => {

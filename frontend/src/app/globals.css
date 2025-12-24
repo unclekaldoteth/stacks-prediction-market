@@ -1175,3 +1175,204 @@ body {
   transform: translateY(-2px);
   box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
 }
+
+/* User Bet Status */
+.user-bet-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  background: var(--bg-secondary);
+  border-radius: 1rem;
+  border: 1px solid var(--border-color);
+}
+
+.user-bet-status.won {
+  background: rgba(0, 210, 106, 0.1);
+  border-color: var(--accent-up);
+}
+
+.user-bet-status.lost {
+  background: rgba(255, 71, 87, 0.1);
+  border-color: var(--accent-down);
+}
+
+.bet-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.bet-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.bet-direction {
+  font-weight: 700;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.5rem;
+}
+
+.bet-direction.up {
+  background: var(--accent-up);
+  color: white;
+}
+
+.bet-direction.down {
+  background: var(--accent-down);
+  color: white;
+}
+
+.bet-amount {
+  font-weight: 600;
+}
+
+.claim-btn {
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, var(--accent-up), #00b359);
+  border: none;
+  border-radius: 0.5rem;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 10px var(--accent-up-glow);
+  }
+
+  50% {
+    box-shadow: 0 0 20px var(--accent-up-glow);
+  }
+}
+
+.claim-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+}
+
+.claimed-badge {
+  color: var(--accent-up);
+  font-weight: 600;
+}
+
+.lost-badge {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+/* Price Row */
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.5rem 0;
+}
+
+.price-row.end-price {
+  border-top: 1px solid var(--border-color);
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+}
+
+/* Input with Quick Buttons */
+.input-with-buttons {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.input-with-buttons button {
+  padding: 0.5rem 1rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.input-with-buttons button:hover {
+  background: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
+}
+
+.input-with-buttons input {
+  flex: 1;
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  color: white;
+  font-size: 1rem;
+  text-align: center;
+}
+
+/* Payout Display */
+.bet-up .payout,
+.bet-down .payout {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  font-weight: 500;
+}
+
+.direction {
+  font-size: 1.25rem;
+}
+
+/* Waiting Result */
+.waiting-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  color: var(--text-secondary);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Success State */
+.tx-status.success {
+  background: rgba(0, 210, 106, 0.1);
+  border-color: var(--accent-up);
+  color: var(--accent-up);
+}
+
+/* Connect Prompt */
+.connect-prompt {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, var(--accent-primary), #8b5cf6);
+  border: none;
+  border-radius: 0.75rem;
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.connect-prompt:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+}
