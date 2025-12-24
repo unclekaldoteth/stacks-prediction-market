@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useWallet } from '@/context/WalletContext';
-import { MAGIC_API_KEY } from '@/config';
+import { MAGIC_API_KEY, CONTRACT_ADDRESS } from '@/config';
 
 type OAuthProvider = 'google' | 'github' | 'facebook' | 'apple';
 
@@ -66,9 +66,11 @@ export default function Header() {
                     <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}>
                         Bet
                     </Link>
-                    <Link href="/admin" className={`nav-link ${pathname === '/admin' ? 'active' : ''}`}>
-                        Admin
-                    </Link>
+                    {isConnected && address?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() && (
+                        <Link href="/admin" className={`nav-link ${pathname === '/admin' ? 'active' : ''}`}>
+                            Admin
+                        </Link>
+                    )}
                 </nav>
 
                 <div className="wallet-section">

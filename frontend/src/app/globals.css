@@ -1376,3 +1376,85 @@ body {
   transform: translateY(-2px);
   box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
 }
+
+/* Admin Access Control */
+.admin-access-denied {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  text-align: center;
+  padding: 2rem;
+  gap: 1rem;
+}
+
+.access-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.admin-access-denied h2 {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.admin-access-denied p {
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.connect-admin-btn {
+  padding: 1rem 2rem;
+  background: linear-gradient(135deg, var(--accent-primary), #8b5cf6);
+  border: none;
+  border-radius: 0.75rem;
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.connect-admin-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+}
+
+.wallet-mismatch {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin: 1rem 0;
+}
+
+.address-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  font-size: 0.875rem;
+}
+
+.address-row .label {
+  color: var(--text-secondary);
+}
+
+.address-row code {
+  font-family: monospace;
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.back-link {
+  color: var(--accent-primary);
+  text-decoration: none;
+  margin-top: 1rem;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
