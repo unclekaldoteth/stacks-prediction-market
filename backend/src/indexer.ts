@@ -462,10 +462,12 @@ async function syncRound(roundId: number) {
                     };
 
                     // Map status number to string
+                    // Contract: STATUS_OPEN=1, STATUS_CLOSED=2, STATUS_RESOLVED=3
                     const statusNum = getNum(roundData.status);
                     let status: 'open' | 'closed' | 'resolved' = 'open';
-                    if (statusNum === 1) status = 'closed';
-                    if (statusNum === 2) status = 'resolved';
+                    if (statusNum === 1) status = 'open';
+                    if (statusNum === 2) status = 'closed';
+                    if (statusNum === 3) status = 'resolved';
 
                     // Preserve existing startTime or set new one for open rounds
                     const existingRound = rounds.get(roundId);
