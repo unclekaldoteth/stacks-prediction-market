@@ -13,13 +13,13 @@ A decentralized binary prediction market built on the Stacks blockchain. Users b
 
 ## Features
 
-- 🎲 **Binary Predictions** - Bet UP or DOWN on BTC price
-- 💰 **STX Betting** - Use native Stacks tokens
-- 📊 **Live Price Feeds** - Real-time BTC/STX prices via CoinGecko
-- 🔗 **WalletConnect** - Connect with Leather, Xverse, or mobile wallets
-- 📧 **Magic Link** - Email & Google social login
-- 🔒 **Admin Controls** - Restricted admin panel for round management
-- ⏱️ **Real-time Sync** - Live blockchain data updates
+- **Binary Predictions** - Bet UP or DOWN on BTC price
+- **STX Betting** - Use native Stacks tokens
+- **Live Price Feeds** - Real-time BTC/STX prices via CoinGecko
+- **WalletConnect** - Connect with Leather, Xverse, or mobile wallets
+- **Magic Link** - Email and Google social login
+- **Admin Controls** - Restricted admin panel for round management
+- **Real-time Sync** - Live blockchain data updates
 
 ## Architecture
 
@@ -51,9 +51,9 @@ The `prediction-market-v2` contract includes:
 | `claim-winnings` | Winners claim their share of the pool |
 
 **Safety Features:**
-- ✅ Minimum bet: 1 STX
-- ✅ Division-by-zero protection
-- ✅ Fixed claim-winnings transfer bug
+- Minimum bet: 1 STX
+- Division-by-zero protection
+- Fixed claim-winnings transfer bug
 
 ## Quick Start
 
@@ -128,6 +128,9 @@ NEXT_PUBLIC_MAGIC_API_KEY=your_magic_key
 CONTRACT_ADDRESS=ST1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX28M1PMM
 CONTRACT_NAME=prediction-market-v2
 PORT=3001
+NETWORK=testnet
+NODE_ENV=development
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3002
 ```
 
 ## API Endpoints
@@ -145,7 +148,8 @@ PORT=3001
 - Admin functions restricted to contract deployer
 - `/admin` page protected by wallet verification
 - STX transfers validated on-chain
-- No private keys stored in frontend
+- Rate limiting: 100 requests per minute
+- CORS restricted to allowed origins in production
 
 ## License
 
@@ -161,4 +165,4 @@ MIT
 
 ---
 
-Built with ❤️ on [Stacks](https://stacks.co)
+Built on [Stacks](https://stacks.co)

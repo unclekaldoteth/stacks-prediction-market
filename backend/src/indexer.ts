@@ -418,6 +418,18 @@ const HIRO_API = NETWORK === 'mainnet'
     ? 'https://api.hiro.so'
     : 'https://api.testnet.hiro.so';
 
+// Hiro API Key for higher rate limits
+const HIRO_API_KEY = process.env.HIRO_API_KEY || '';
+
+// Helper to get Hiro API headers
+const getHiroHeaders = () => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (HIRO_API_KEY) {
+        headers['x-api-key'] = HIRO_API_KEY;
+    }
+    return headers;
+};
+
 // Types for Hiro API responses
 interface HiroReadResponse {
     okay: boolean;
@@ -434,7 +446,7 @@ async function syncFromBlockchain() {
             `${HIRO_API}/v2/contracts/call-read/${CONTRACT_ADDRESS}/${CONTRACT_NAME}/get-current-round-id`,
             {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getHiroHeaders(),
                 body: JSON.stringify({
                     sender: CONTRACT_ADDRESS,
                     arguments: [],
@@ -473,7 +485,7 @@ async function syncRound(roundId: number) {
             `${HIRO_API}/v2/contracts/call-read/${CONTRACT_ADDRESS}/${CONTRACT_NAME}/get-round`,
             {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getHiroHeaders(),
                 body: JSON.stringify({
                     sender: CONTRACT_ADDRESS,
                     arguments: [roundIdHex],
