@@ -1,17 +1,56 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// CORS Middleware - Allow all origins for development
+// Environment configuration
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : ['http://localhost:3000', 'http://localhost:3002', 'https://stacks-prediction-market.vercel.app'];
+
+// CORS Middleware - Production ready
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
+    const origin = req.headers.origin as string | undefined;
+
+    // Allow specific origins in production, all in development
+    if (NODE_ENV === 'development' || (origin && ALLOWED_ORIGINS.includes(origin))) {
+        res.header('Access-Control-Allow-Origin', origin || '*');
+    }
+
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+
     if (req.method === 'OPTIONS') {
         res.sendStatus(200);
         return;
     }
+    next();
+});
+
+// Rate limiting - Simple in-memory implementation
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 100; // 100 requests per minute
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const now = Date.now();
+
+    let rateData = rateLimitMap.get(ip);
+
+    if (!rateData || now > rateData.resetTime) {
+        rateData = { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS };
+        rateLimitMap.set(ip, rateData);
+    } else {
+        rateData.count++;
+    }
+
+    if (rateData.count > RATE_LIMIT_MAX_REQUESTS) {
+        res.status(429).json({ error: 'Too many requests. Please try again later.' });
+        return;
+    }
+
     next();
 });
 
@@ -372,7 +411,12 @@ app.get('/api/prices', async (_req: Request, res: Response) => {
 // Contract configuration
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || 'ST1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX28M1PMM';
 const CONTRACT_NAME = process.env.CONTRACT_NAME || 'prediction-market-v2';
-const HIRO_API = 'https://api.testnet.hiro.so';
+const NETWORK = process.env.NETWORK || 'testnet';
+
+// Hiro API - configurable for mainnet/testnet
+const HIRO_API = NETWORK === 'mainnet'
+    ? 'https://api.hiro.so'
+    : 'https://api.testnet.hiro.so';
 
 // Types for Hiro API responses
 interface HiroReadResponse {
