@@ -371,7 +371,7 @@ app.get('/api/prices', async (_req: Request, res: Response) => {
 });
 // Contract configuration
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || 'ST1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX28M1PMM';
-const CONTRACT_NAME = process.env.CONTRACT_NAME || 'prediction-market';
+const CONTRACT_NAME = process.env.CONTRACT_NAME || 'prediction-market-v2';
 const HIRO_API = 'https://api.testnet.hiro.so';
 
 // Types for Hiro API responses
