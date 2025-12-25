@@ -140,9 +140,16 @@ export default function BettingPanel() {
 
         try {
             const { request } = await import('@stacks/connect');
-            const { uintCV, cvToHex } = await import('@stacks/transactions');
+            const { uintCV, cvToHex, makeStandardSTXPostCondition, FungibleConditionCode, serializePostCondition } = await import('@stacks/transactions');
 
             setTxStatus('Confirm in your wallet...');
+
+            // Create post-condition to allow STX transfer
+            const postCondition = makeStandardSTXPostCondition(
+                address,
+                FungibleConditionCode.LessEqual,
+                amountMicroSTX
+            );
 
             const response = await request(
                 {
@@ -159,6 +166,7 @@ export default function BettingPanel() {
                         cvToHex(uintCV(direction)),
                         cvToHex(uintCV(amountMicroSTX)),
                     ],
+                    postConditions: [serializePostCondition(postCondition).toString('hex')],
                 }
             );
 

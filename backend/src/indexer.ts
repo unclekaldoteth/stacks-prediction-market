@@ -539,7 +539,7 @@ async function syncRound(roundId: number) {
                         startTime: existingRound?.startTime || (status === 'open' ? Math.floor(Date.now() / 1000) : undefined),
                     };
                     rounds.set(roundId, round);
-                    console.log(`   Synced round #${roundId} - Status: ${status}, Start Price: $${round.startPrice?.toLocaleString()}`);
+                    console.log(`   Synced round #${roundId} - Status: ${status}, Start Price: $${round.startPrice?.toLocaleString()}, Pool UP: ${round.poolUp}, Pool DOWN: ${round.poolDown}`);
                 }
             } catch (parseError) {
                 console.error(`   Parse error for round ${roundId}:`, parseError);
