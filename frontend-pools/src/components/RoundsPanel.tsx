@@ -140,8 +140,8 @@ export default function RoundsPanel() {
                             <button
                                 onClick={() => setSelectedDirection(DIRECTION_UP)}
                                 className={`p-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${selectedDirection === DIRECTION_UP
-                                        ? 'border-green-500 bg-green-500/20'
-                                        : 'border-white/10 hover:border-white/30'
+                                    ? 'border-green-500 bg-green-500/20'
+                                    : 'border-white/10 hover:border-white/30'
                                     }`}
                             >
                                 <span className="text-2xl">📈</span>
@@ -150,8 +150,8 @@ export default function RoundsPanel() {
                             <button
                                 onClick={() => setSelectedDirection(DIRECTION_DOWN)}
                                 className={`p-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${selectedDirection === DIRECTION_DOWN
-                                        ? 'border-red-500 bg-red-500/20'
-                                        : 'border-white/10 hover:border-white/30'
+                                    ? 'border-red-500 bg-red-500/20'
+                                    : 'border-white/10 hover:border-white/30'
                                     }`}
                             >
                                 <span className="text-2xl">📉</span>
@@ -161,17 +161,20 @@ export default function RoundsPanel() {
 
                         <div>
                             <label className="block text-sm text-gray-400 mb-2">
-                                Bet Amount (STX)
+                                Bet Amount (STX) <span className="text-orange-400">• Min: 1 STX</span>
                             </label>
                             <input
                                 type="number"
                                 value={betAmount}
                                 onChange={(e) => setBetAmount(e.target.value)}
-                                placeholder="Enter amount"
+                                placeholder="Minimum 1 STX"
                                 min="1"
                                 step="0.1"
                                 className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none"
                             />
+                            {betAmount && parseFloat(betAmount) < 1 && (
+                                <p className="text-red-400 text-xs mt-1">⚠️ Minimum bet is 1 STX</p>
+                            )}
                         </div>
 
                         <button
@@ -201,8 +204,8 @@ export default function RoundsPanel() {
                             <div>
                                 <span className="text-white font-medium">Round #{round.roundId}</span>
                                 <span className={`ml-2 text-xs px-2 py-0.5 rounded ${round.status === 'resolved'
-                                        ? 'bg-green-500/20 text-green-400'
-                                        : 'bg-yellow-500/20 text-yellow-400'
+                                    ? 'bg-green-500/20 text-green-400'
+                                    : 'bg-yellow-500/20 text-yellow-400'
                                     }`}>
                                     {round.status}
                                 </span>
