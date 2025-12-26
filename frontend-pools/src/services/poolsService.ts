@@ -1,5 +1,6 @@
-// Service for reading pool data from Stacks blockchain via Hiro API
-import { CONTRACT_ADDRESS, CONTRACT_NAME_POOLS, HIRO_API } from '@/config';
+// Service for reading pool data from Stacks blockchain
+// Priority: Backend API (faster, cached) > Hiro API (direct, slower)
+import { CONTRACT_ADDRESS, CONTRACT_NAME_POOLS, HIRO_API, API_URL } from '@/config';
 import { cvToValue, hexToCV, uintCV, cvToHex, principalCV } from '@stacks/transactions';
 
 export interface Pool {
@@ -24,7 +25,52 @@ export interface UserBet {
     amountB: number;
 }
 
-// Get pool count
+// Try backend API first, fallback to Hiro
+export async function getAllPools(): Promise<Pool[]> {
+    // Try backend first (cached, faster)
+    try {
+        const response = await fetch(`${API_URL}/api/pools`, {
+            signal: AbortSignal.timeout(3000),
+        });
+        if (response.ok) {
+            const data = await response.json();
+            // Ensure data matches frontend format
+            return data.map((p: any) => ({
+                poolId: p.poolId,
+                title: p.title || '',
+                description: p.description || '',
+                outcomeA: p.outcomeA || p['outcome-a'] || '',
+                outcomeB: p.outcomeB || p['outcome-b'] || '',
+                category: p.category || '',
+                creator: p.creator || '',
+                expiry: p.expiry || 0,
+                totalA: p.totalA || p['total-a'] || 0,
+                totalB: p.totalB || p['total-b'] || 0,
+                tokenType: p.tokenType || p['token-type'] || 0,
+                settled: Boolean(p.settled),
+                winningOutcome: p.winningOutcome ?? p['winning-outcome'] ?? null,
+                depositClaimed: Boolean(p.depositClaimed || p['deposit-claimed']),
+            }));
+        }
+    } catch {
+        // Backend not available, use Hiro API
+    }
+
+    // Fallback to Hiro API (direct)
+    const count = await getPoolCount();
+    const pools: Pool[] = [];
+
+    for (let i = 0; i < count; i++) {
+        const pool = await getPool(i);
+        if (pool) {
+            pools.push(pool);
+        }
+    }
+
+    return pools;
+}
+
+// Get pool count from Hiro API
 export async function getPoolCount(): Promise<number> {
     try {
         const response = await fetch(
@@ -51,8 +97,37 @@ export async function getPoolCount(): Promise<number> {
     }
 }
 
-// Get pool by ID
+// Get pool by ID - try backend first
 export async function getPool(poolId: number): Promise<Pool | null> {
+    // Try backend first
+    try {
+        const response = await fetch(`${API_URL}/api/pools/${poolId}`, {
+            signal: AbortSignal.timeout(2000),
+        });
+        if (response.ok) {
+            const p = await response.json();
+            return {
+                poolId: p.poolId,
+                title: p.title || '',
+                description: p.description || '',
+                outcomeA: p.outcomeA || p['outcome-a'] || '',
+                outcomeB: p.outcomeB || p['outcome-b'] || '',
+                category: p.category || '',
+                creator: p.creator || '',
+                expiry: p.expiry || 0,
+                totalA: p.totalA || p['total-a'] || 0,
+                totalB: p.totalB || p['total-b'] || 0,
+                tokenType: p.tokenType || p['token-type'] || 0,
+                settled: Boolean(p.settled),
+                winningOutcome: p.winningOutcome ?? p['winning-outcome'] ?? null,
+                depositClaimed: Boolean(p.depositClaimed || p['deposit-claimed']),
+            };
+        }
+    } catch {
+        // Fall through to Hiro
+    }
+
+    // Fallback to Hiro API
     try {
         const poolIdHex = cvToHex(uintCV(poolId));
 
@@ -102,22 +177,7 @@ export async function getPool(poolId: number): Promise<Pool | null> {
     }
 }
 
-// Get all pools
-export async function getAllPools(): Promise<Pool[]> {
-    const count = await getPoolCount();
-    const pools: Pool[] = [];
-
-    for (let i = 0; i < count; i++) {
-        const pool = await getPool(i);
-        if (pool) {
-            pools.push(pool);
-        }
-    }
-
-    return pools;
-}
-
-// Get user bet for a pool
+// Get user bet for a pool (always from Hiro - real-time data)
 export async function getUserBet(poolId: number, userAddress: string): Promise<UserBet | null> {
     try {
         const poolIdHex = cvToHex(uintCV(poolId));
@@ -183,4 +243,26 @@ export async function getMinBetAmount(tokenType: number): Promise<number> {
         console.error('Failed to get min bet amount:', error);
         return 1000000;
     }
+}
+
+// Get pool stats from backend (if available)
+export async function getPoolStats(): Promise<{
+    totalPools: number;
+    activePools: number;
+    settledPools: number;
+    totalVolumeSTX: number;
+    totalVolumeUSDCx: number;
+    totalBets: number;
+} | null> {
+    try {
+        const response = await fetch(`${API_URL}/api/pools/stats/summary`, {
+            signal: AbortSignal.timeout(3000),
+        });
+        if (response.ok) {
+            return await response.json();
+        }
+    } catch {
+        // Backend not available
+    }
+    return null;
 }

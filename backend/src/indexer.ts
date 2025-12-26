@@ -63,6 +63,7 @@ interface PrintEvent {
     topic: string;
     value: {
         event: string;
+        // prediction-market-v2 events
         'round-id'?: number;
         user?: string;
         direction?: number;
@@ -75,8 +76,22 @@ interface PrintEvent {
         'pool-down'?: number;
         'start-block'?: number;
         'end-block'?: number;
+        // prediction-pools events
+        'pool-id'?: number;
+        title?: string;
+        description?: string;
+        category?: string;
+        'outcome-a'?: string;
+        'outcome-b'?: string;
+        creator?: string;
+        expiry?: number;
+        'token-type'?: number;
+        outcome?: number;
+        'winning-outcome'?: number;
+        'total-pool'?: number;
+        'payout'?: number;
     };
-}
+};
 
 interface ChainhookPayload {
     apply: Array<{
@@ -129,11 +144,44 @@ interface Round {
     winningDirection?: number;
     startBlock?: number;
     endBlock?: number;
-    startTime?: number; // Unix timestamp when round was synced
+    startTime?: number;
 }
 
+// Prediction Pools types
+interface Pool {
+    poolId: number;
+    title: string;
+    description: string;
+    category: string;
+    outcomeA: string;
+    outcomeB: string;
+    creator: string;
+    expiry: number;
+    tokenType: number;
+    totalA: number;
+    totalB: number;
+    settled: boolean;
+    winningOutcome?: number;
+    depositClaimed: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+interface PoolBet {
+    poolId: number;
+    user: string;
+    outcome: number; // 0 = A, 1 = B
+    amount: number;
+    txHash: string;
+    blockHeight: number;
+    timestamp: Date;
+}
+
+// In-memory storage
 const bets: Bet[] = [];
 const rounds: Map<number, Round> = new Map();
+const pools: Map<number, Pool> = new Map();
+const poolBets: PoolBet[] = [];
 
 // Chainhook webhook endpoint
 app.post('/api/chainhook', (req: Request, res: Response) => {
@@ -196,6 +244,7 @@ function processEvent(
     const eventType = eventData.event;
 
     switch (eventType) {
+        // prediction-market-v2 events
         case 'bet-placed':
             handleBetPlaced(eventData, txHash, blockHeight);
             break;
@@ -210,6 +259,22 @@ function processEvent(
             break;
         case 'winnings-claimed':
             handleWinningsClaimed(eventData);
+            break;
+        // prediction-pools events
+        case 'pool-created':
+            handlePoolCreated(eventData, blockHeight);
+            break;
+        case 'pool-bet-placed':
+            handlePoolBetPlaced(eventData, txHash, blockHeight);
+            break;
+        case 'pool-settled':
+            handlePoolSettled(eventData);
+            break;
+        case 'pool-winnings-claimed':
+            handlePoolWinningsClaimed(eventData);
+            break;
+        case 'pool-refund':
+            handlePoolRefund(eventData);
             break;
         default:
             console.log(`   Unknown event: ${eventType}`);
@@ -323,7 +388,136 @@ function handleWinningsClaimed(data: PrintEvent['value']) {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 }
 
-// API endpoints for frontend
+// ============================================
+// PREDICTION POOLS EVENT HANDLERS
+// ============================================
+
+function handlePoolCreated(data: PrintEvent['value'], blockHeight: number) {
+    const poolId = data['pool-id'] || 0;
+    const tokenType = data['token-type'] || 0;
+    const tokenSymbol = tokenType === 1 ? 'USDCx' : 'STX';
+
+    const pool: Pool = {
+        poolId,
+        title: data.title || '',
+        description: data.description || '',
+        category: data.category || 'general',
+        outcomeA: data['outcome-a'] || 'Yes',
+        outcomeB: data['outcome-b'] || 'No',
+        creator: data.creator || '',
+        expiry: data.expiry || 0,
+        tokenType,
+        totalA: 0,
+        totalB: 0,
+        settled: false,
+        depositClaimed: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+    };
+
+    pools.set(poolId, pool);
+
+    console.log('\n🎯 POOL CREATED!');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`   Pool ID:  #${poolId}`);
+    console.log(`   Title:    ${pool.title}`);
+    console.log(`   Creator:  ${pool.creator}`);
+    console.log(`   Token:    ${tokenSymbol}`);
+    console.log(`   Outcomes: "${pool.outcomeA}" vs "${pool.outcomeB}"`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+}
+
+function handlePoolBetPlaced(data: PrintEvent['value'], txHash: string, blockHeight: number) {
+    const poolId = data['pool-id'] || 0;
+    const outcome = data.outcome || 0;
+    const amount = data.amount || 0;
+
+    const poolBet: PoolBet = {
+        poolId,
+        user: data.user || '',
+        outcome,
+        amount,
+        txHash,
+        blockHeight,
+        timestamp: new Date(),
+    };
+
+    poolBets.push(poolBet);
+
+    // Update pool totals
+    const pool = pools.get(poolId);
+    if (pool) {
+        if (outcome === 0) {
+            pool.totalA += amount;
+        } else {
+            pool.totalB += amount;
+        }
+        pool.updatedAt = new Date();
+    }
+
+    const tokenSymbol = pool?.tokenType === 1 ? 'USDCx' : 'STX';
+    const outcomeLabel = outcome === 0 ? pool?.outcomeA || 'A' : pool?.outcomeB || 'B';
+
+    console.log('\n🎲 POOL BET PLACED!');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`   Pool:    #${poolId} - ${pool?.title || 'Unknown'}`);
+    console.log(`   User:    ${poolBet.user}`);
+    console.log(`   Outcome: ${outcomeLabel}`);
+    console.log(`   Amount:  ${(amount / 1000000).toFixed(2)} ${tokenSymbol}`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+}
+
+function handlePoolSettled(data: PrintEvent['value']) {
+    const poolId = data['pool-id'] || 0;
+    const winningOutcome = data['winning-outcome'];
+
+    const pool = pools.get(poolId);
+    if (pool) {
+        pool.settled = true;
+        pool.winningOutcome = winningOutcome;
+        pool.updatedAt = new Date();
+    }
+
+    const tokenSymbol = pool?.tokenType === 1 ? 'USDCx' : 'STX';
+    const winnerLabel = winningOutcome === 0 ? pool?.outcomeA || 'A' : pool?.outcomeB || 'B';
+
+    console.log('\n🏆 POOL SETTLED!');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`   Pool:    #${poolId} - ${pool?.title || 'Unknown'}`);
+    console.log(`   Winner:  ${winnerLabel}`);
+    console.log(`   Total:   ${((data['total-pool'] || 0) / 1000000).toFixed(2)} ${tokenSymbol}`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+}
+
+function handlePoolWinningsClaimed(data: PrintEvent['value']) {
+    const pool = pools.get(data['pool-id'] || 0);
+    const tokenSymbol = pool?.tokenType === 1 ? 'USDCx' : 'STX';
+
+    console.log('\n💰 POOL WINNINGS CLAIMED!');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`   Pool:   #${data['pool-id']}`);
+    console.log(`   User:   ${data.user}`);
+    console.log(`   Payout: ${((data.payout || 0) / 1000000).toFixed(2)} ${tokenSymbol}`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+}
+
+function handlePoolRefund(data: PrintEvent['value']) {
+    const pool = pools.get(data['pool-id'] || 0);
+    const tokenSymbol = pool?.tokenType === 1 ? 'USDCx' : 'STX';
+
+    console.log('\n🔙 POOL REFUND!');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`   Pool:   #${data['pool-id']}`);
+    console.log(`   User:   ${data.user}`);
+    console.log(`   Amount: ${((data.amount || 0) / 1000000).toFixed(2)} ${tokenSymbol}`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+}
+
+// ============================================
+// API ENDPOINTS
+// ============================================
+
+// Rounds API endpoints
 app.get('/api/rounds', (_req: Request, res: Response) => {
     res.json(Array.from(rounds.values()));
 });
@@ -361,6 +555,76 @@ app.get('/api/bets', (req: Request, res: Response) => {
 app.get('/api/bets/:roundId', (req: Request, res: Response) => {
     const roundBets = bets.filter(b => b.roundId === parseInt(req.params.roundId));
     res.json(roundBets);
+});
+
+// ============================================
+// POOLS API ENDPOINTS
+// ============================================
+
+// Get all pools
+app.get('/api/pools', (_req: Request, res: Response) => {
+    const poolsList = Array.from(pools.values());
+    // Sort by most recent first
+    poolsList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    res.json(poolsList);
+});
+
+// Get pool by ID
+app.get('/api/pools/:id', (req: Request, res: Response) => {
+    const pool = pools.get(parseInt(req.params.id));
+    if (pool) {
+        res.json(pool);
+    } else {
+        res.status(404).json({ error: 'Pool not found' });
+    }
+});
+
+// Get bets for a pool
+app.get('/api/pools/:id/bets', (req: Request, res: Response) => {
+    const poolId = parseInt(req.params.id);
+    const betsForPool = poolBets.filter(b => b.poolId === poolId);
+    res.json(betsForPool);
+});
+
+// Get user's bets across all pools
+app.get('/api/pool-bets', (req: Request, res: Response) => {
+    const { poolId, user } = req.query;
+
+    let filteredBets = poolBets;
+
+    if (poolId) {
+        filteredBets = filteredBets.filter(b => b.poolId === parseInt(poolId as string));
+    }
+
+    if (user) {
+        filteredBets = filteredBets.filter(b => b.user.toLowerCase() === (user as string).toLowerCase());
+    }
+
+    res.json(filteredBets);
+});
+
+// Get pool stats
+app.get('/api/pools/stats/summary', (_req: Request, res: Response) => {
+    const poolsList = Array.from(pools.values());
+    const activePools = poolsList.filter(p => !p.settled);
+    const settledPools = poolsList.filter(p => p.settled);
+
+    const totalVolumeSTX = poolsList
+        .filter(p => p.tokenType === 0)
+        .reduce((sum, p) => sum + p.totalA + p.totalB, 0);
+
+    const totalVolumeUSDCx = poolsList
+        .filter(p => p.tokenType === 1)
+        .reduce((sum, p) => sum + p.totalA + p.totalB, 0);
+
+    res.json({
+        totalPools: poolsList.length,
+        activePools: activePools.length,
+        settledPools: settledPools.length,
+        totalVolumeSTX: totalVolumeSTX / 1000000,
+        totalVolumeUSDCx: totalVolumeUSDCx / 1000000,
+        totalBets: poolBets.length,
+    });
 });
 
 // Health check
@@ -562,17 +826,149 @@ async function syncRound(roundId: number) {
 
 // Start periodic blockchain sync (every 30 seconds)
 setInterval(syncFromBlockchain, 30000);
+setInterval(syncPoolsFromBlockchain, 30000);
+
+// Pools blockchain sync function
+const CONTRACT_NAME_POOLS = 'prediction-pools';
+
+async function syncPoolsFromBlockchain() {
+    try {
+        console.log('🔄 Syncing pools from blockchain...');
+
+        // Get pool count
+        const countResponse = await fetch(
+            `${HIRO_API}/v2/contracts/call-read/${CONTRACT_ADDRESS}/${CONTRACT_NAME_POOLS}/get-pool-count`,
+            {
+                method: 'POST',
+                headers: getHiroHeaders(),
+                body: JSON.stringify({
+                    sender: CONTRACT_ADDRESS,
+                    arguments: [],
+                }),
+            }
+        );
+
+        const countData = await countResponse.json() as HiroReadResponse;
+
+        if (countData.okay && countData.result) {
+            const hex = countData.result.slice(2);
+            if (hex.startsWith('01')) {
+                const poolCount = parseInt(hex.slice(2), 16);
+                console.log(`   Pool count: ${poolCount}`);
+
+                // Fetch each pool
+                for (let i = 0; i < poolCount; i++) {
+                    await syncPool(i);
+                }
+            }
+        }
+
+        console.log('✅ Pools sync complete');
+    } catch (error) {
+        console.error('❌ Pools sync failed:', error);
+    }
+}
+
+async function syncPool(poolId: number) {
+    try {
+        const poolIdHex = '0x01' + poolId.toString(16).padStart(32, '0');
+
+        const response = await fetch(
+            `${HIRO_API}/v2/contracts/call-read/${CONTRACT_ADDRESS}/${CONTRACT_NAME_POOLS}/get-pool`,
+            {
+                method: 'POST',
+                headers: getHiroHeaders(),
+                body: JSON.stringify({
+                    sender: CONTRACT_ADDRESS,
+                    arguments: [poolIdHex],
+                }),
+            }
+        );
+
+        const data = await response.json() as HiroReadResponse;
+
+        if (data.okay && data.result && data.result !== '0x09') {
+            const { cvToValue, hexToCV } = await import('@stacks/transactions');
+
+            try {
+                const clarityValue = hexToCV(data.result);
+                const parsed = cvToValue(clarityValue);
+
+                if (parsed && typeof parsed === 'object') {
+                    const poolData = (parsed as any).value || parsed;
+
+                    const getString = (field: any): string => {
+                        if (!field) return '';
+                        if (typeof field === 'object' && 'value' in field) {
+                            return String(field.value);
+                        }
+                        return String(field);
+                    };
+
+                    const getNum = (field: any): number => {
+                        if (!field) return 0;
+                        if (typeof field === 'object' && 'value' in field) {
+                            return Number(field.value);
+                        }
+                        return Number(field) || 0;
+                    };
+
+                    const getBool = (field: any): boolean => {
+                        if (!field) return false;
+                        if (typeof field === 'object' && 'value' in field) {
+                            return Boolean(field.value);
+                        }
+                        return Boolean(field);
+                    };
+
+                    const existingPool = pools.get(poolId);
+                    const pool: Pool = {
+                        poolId,
+                        title: getString(poolData.title),
+                        description: getString(poolData.description),
+                        category: getString(poolData.category),
+                        outcomeA: getString(poolData['outcome-a']),
+                        outcomeB: getString(poolData['outcome-b']),
+                        creator: getString(poolData.creator),
+                        expiry: getNum(poolData.expiry),
+                        tokenType: getNum(poolData['token-type']),
+                        totalA: getNum(poolData['total-a']),
+                        totalB: getNum(poolData['total-b']),
+                        settled: getBool(poolData.settled),
+                        winningOutcome: poolData['winning-outcome']?.value?.value,
+                        depositClaimed: getBool(poolData['deposit-claimed']),
+                        createdAt: existingPool?.createdAt || new Date(),
+                        updatedAt: new Date(),
+                    };
+
+                    pools.set(poolId, pool);
+                    const tokenSymbol = pool.tokenType === 1 ? 'USDCx' : 'STX';
+                    console.log(`   Synced pool #${poolId} - "${pool.title}" (${tokenSymbol})`);
+                }
+            } catch (parseError) {
+                console.error(`   Parse error for pool ${poolId}:`, parseError);
+            }
+        }
+    } catch (error) {
+        console.error(`   Failed to sync pool ${poolId}:`, error);
+    }
+}
 
 // Start server
 app.listen(PORT, () => {
-    console.log('\n╔════════════════════════════════════════════╗');
-    console.log('║   🎯 Prediction Market Indexer Started     ║');
-    console.log('╠════════════════════════════════════════════╣');
-    console.log(`║   Server:    http://localhost:${PORT}          ║`);
-    console.log('║   Chainhook: /api/chainhook               ║');
-    console.log('╚════════════════════════════════════════════╝\n');
+    console.log('\n╔══════════════════════════════════════════════╗');
+    console.log('║  🎯 Prediction Market + Pools Indexer        ║');
+    console.log('╠══════════════════════════════════════════════╣');
+    console.log(`║  Server:    http://localhost:${PORT}            ║`);
+    console.log('║  Chainhook: /api/chainhook                   ║');
+    console.log('║  Contracts:                                  ║');
+    console.log('║    - prediction-market-v2 (Rounds)           ║');
+    console.log('║    - prediction-pools (Custom Pools)         ║');
+    console.log('╚══════════════════════════════════════════════╝\n');
     console.log('Waiting for blockchain events...\n');
 
     // Initial sync on startup
     syncFromBlockchain();
+    syncPoolsFromBlockchain();
 });
+

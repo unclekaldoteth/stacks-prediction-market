@@ -1,0 +1,24 @@
+# Chainhook Configuration for Stacks Prediction Market
+# This file configures Chainhook to listen for events from both contracts
+# Deploy with: chainhook predicates start chainhook.yaml --start-block <block_number>
+
+# API endpoint for webhooks
+if_this:
+  scope: contract_call
+  contract_identifier: ST1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX28M1PMM.prediction-market-v2
+  method: "*"
+then_that:
+  http_post:
+    url: http://localhost:3001/api/chainhook
+    authorization_header: "Bearer prediction-market-secret"
+
+---
+# Prediction Pools Contract Events
+if_this:
+  scope: contract_call
+  contract_identifier: ST1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX28M1PMM.prediction-pools
+  method: "*"
+then_that:
+  http_post:
+    url: http://localhost:3001/api/chainhook
+    authorization_header: "Bearer prediction-market-secret"
