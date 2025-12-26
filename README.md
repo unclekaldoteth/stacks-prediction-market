@@ -1,59 +1,86 @@
 # Stacks Prediction Market
 
-A decentralized binary prediction market built on the Stacks blockchain. Users bet STX on whether BTC price will go UP or DOWN.
+A decentralized prediction market platform built on the Stacks blockchain. Features both BTC price predictions and user-created custom prediction pools.
 
 ![Stacks](https://img.shields.io/badge/Stacks-Testnet-purple)
-![Next.js](https://img.shields.io/badge/Next.js-15-black)
+![Next.js](https://img.shields.io/badge/Next.js-16-black)
 ![Clarity](https://img.shields.io/badge/Clarity-2.0-blue)
+
+## 🎯 Two Prediction Systems
+
+### 1. BTC Rounds (prediction-market-v2)
+Binary predictions on BTC price movements. Admin-managed rounds where users bet UP or DOWN.
+
+### 2. Prediction Pools (prediction-pools) ✨ NEW
+User-created custom prediction markets with any two outcomes. **Anyone can create pools!**
+
+| Feature | BTC Rounds | Prediction Pools |
+|---------|------------|------------------|
+| Creator | Admin only | Any user |
+| Outcomes | UP / DOWN | Custom (A / B) |
+| Token | STX only | STX or USDCx |
+| Topics | BTC price | Anything |
 
 ## Live Demo
 
-- **Frontend**: [stacks-prediction-market.vercel.app](https://stacks-prediction-market.vercel.app)
-- **Contract**: [`ST1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX28M1PMM.prediction-market-v2`](https://explorer.hiro.so/txid/0x9d90212e1d812d8e1e8486522227d141ee55b2a6d4b4cae1709daebc9fb4bacd?chain=testnet)
+- **Unified Frontend**: [stacks-prediction-market.vercel.app](https://stacks-prediction-market.vercel.app)
+- **Contracts**:
+  - [`prediction-market-v2`](https://explorer.hiro.so/txid/0x9d90212e1d812d8e1e8486522227d141ee55b2a6d4b4cae1709daebc9fb4bacd?chain=testnet) - BTC Rounds
+  - [`prediction-pools`](https://explorer.hiro.so/txid/ST1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX28M1PMM.prediction-pools?chain=testnet) - Custom Pools
 
 ## Features
 
-- **Binary Predictions** - Bet UP or DOWN on BTC price
-- **STX Betting** - Use native Stacks tokens
-- **Live Price Feeds** - Real-time BTC/STX prices via CoinGecko
-- **WalletConnect** - Connect with Leather, Xverse, or mobile wallets
-- **Magic Link** - Email and Google social login
-- **Admin Controls** - Restricted admin panel for round management
-- **Real-time Sync** - Live blockchain data updates
+- **🎯 Custom Pools** - Create your own prediction markets
+- **₿ BTC Predictions** - Bet UP or DOWN on Bitcoin price
+- **💰 Dual Tokens** - Use STX or USDCx for betting
+- **🔐 Gmail Login** - One-click Google authentication via Magic Link
+- **👛 WalletConnect** - Connect with Leather, Xverse, or mobile wallets
+- **📊 Live Data** - Real-time blockchain data updates
 
 ## Architecture
 
 ```
 stacks-prediction/
-├── contracts/                 # Clarity smart contracts
-│   ├── prediction-market.clar       # Original contract
-│   └── prediction-market-v2.clar    # Fixed contract (current)
-├── frontend/                  # Next.js 15 web app
+├── contracts/                    # Clarity smart contracts
+│   ├── prediction-market-v2.clar     # BTC rounds contract
+│   ├── prediction-pools.clar         # Custom pools contract ✨
+│   └── mock-usdcx.clar               # Test USDCx token
+├── frontend-pools/               # Unified Next.js app ✨
 │   └── src/
-│       ├── app/              # Pages (home, admin)
-│       ├── components/       # BettingPanel, AdminPanel, Header
-│       └── context/          # WalletContext (auth)
-├── backend/                   # Node.js indexer
-│   └── src/indexer.ts        # Blockchain sync + API
-└── deployments/              # Clarinet deployment plans
+│       ├── components/
+│       │   ├── RoundsPanel.tsx       # BTC predictions
+│       │   ├── PoolList.tsx          # Pool browser
+│       │   ├── CreatePool.tsx        # Pool creation form
+│       │   └── BetPanel.tsx          # Betting modal
+│       ├── services/                 # API services
+│       └── context/                  # Wallet + auth
+├── frontend/                     # Legacy frontend (BTC only)
+├── backend/                      # Node.js indexer
+└── deployments/                  # Clarinet deployment plans
 ```
 
-## Smart Contract (v2)
+## Smart Contracts
 
-The `prediction-market-v2` contract includes:
+### prediction-pools (New)
 
 | Function | Description |
 |----------|-------------|
-| `start-round` | Admin starts new betting round with BTC price |
+| `create-pool` | Anyone can create a pool (5 STX/USDCx deposit) |
+| `place-bet` | Bet on outcome A or B |
+| `settle-pool` | Creator picks winning outcome |
+| `claim-winnings` | Winners claim proportional rewards |
+| `claim-deposit` | Creator reclaims deposit after settlement |
+| `request-refund` | Refund if pool expires unsettled |
+
+### prediction-market-v2
+
+| Function | Description |
+|----------|-------------|
+| `start-round` | Admin starts new betting round |
 | `place-bet` | User bets STX on UP (1) or DOWN (0) |
 | `end-round` | Admin closes betting period |
-| `resolve-round` | Admin sets winning direction based on final price |
-| `claim-winnings` | Winners claim their share of the pool |
-
-**Safety Features:**
-- Minimum bet: 1 STX
-- Division-by-zero protection
-- Fixed claim-winnings transfer bug
+| `resolve-round` | Admin sets winning direction |
+| `claim-winnings` | Winners claim their share |
 
 ## Quick Start
 
@@ -62,7 +89,15 @@ The `prediction-market-v2` contract includes:
 - [Clarinet](https://docs.hiro.so/clarinet) (for contract development)
 - Stacks wallet (Leather or Xverse)
 
-### Backend
+### Unified Frontend (Recommended)
+```bash
+cd frontend-pools
+npm install
+npm run dev
+# App runs on http://localhost:3002
+```
+
+### Backend (Optional - for indexing)
 ```bash
 cd backend
 npm install
@@ -70,86 +105,65 @@ npm run dev
 # API runs on http://localhost:3001
 ```
 
-### Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-# App runs on http://localhost:3000
-```
-
 ### Contract Deployment
 ```bash
-# Check contract
+# Check contracts
 clarinet check
 
-# Deploy to testnet
-clarinet deployments apply -p deployments/v2.testnet-plan.yaml
+# Deploy prediction-pools to testnet
+clarinet deployments apply -p deployments/prediction-pools.testnet-plan.yaml
 ```
 
-## How It Works
+## How Prediction Pools Work
 
-1. **Admin starts round** with current BTC price as reference
-2. **Users bet** UP or DOWN (minimum 1 STX)
-3. **Admin ends betting** when round timer expires
-4. **Admin resolves** with final BTC price
-5. **Winners claim** proportional share of total pool
+1. **Create Pool** - Anyone can create a pool with:
+   - Title and description
+   - Two outcomes (A and B)
+   - Duration in days
+   - Token type (STX or USDCx)
+   - 5 token deposit (refundable)
+
+2. **Place Bets** - Users bet on either outcome
+
+3. **Settlement** - After expiry, creator settles the pool
+
+4. **Claims** - Winners claim proportional rewards (3% fee)
+
+5. **Deposit Return** - Creator gets deposit back
 
 ### Payout Calculation
 ```
-user_share = (user_bet * total_pool) / winning_pool
+user_payout = (user_bet * total_pool * 0.97) / winning_pool
 ```
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|------------|
-| Contract | Clarity 2.0 |
-| Frontend | Next.js 15, React 19, TypeScript |
+| Contracts | Clarity 2.0 |
+| Frontend | Next.js 16, React 19, TypeScript, Tailwind |
 | Backend | Express, TypeScript |
 | Wallet | @stacks/connect, WalletConnect, Magic Link |
 | APIs | Hiro Stacks API, CoinGecko |
-| Deploy | Vercel (frontend), Railway (backend) |
+| Deploy | Vercel |
 
 ## Environment Variables
 
-### Frontend (`.env.local`)
+### Frontend (`frontend-pools/.env.local`)
 ```env
 NEXT_PUBLIC_CONTRACT_ADDRESS=ST1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX28M1PMM
-NEXT_PUBLIC_CONTRACT_NAME=prediction-market-v2
 NEXT_PUBLIC_NETWORK=testnet
-NEXT_PUBLIC_API_URL=http://localhost:3001
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id
 NEXT_PUBLIC_MAGIC_API_KEY=your_magic_key
 ```
 
-### Backend
-```env
-CONTRACT_ADDRESS=ST1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX28M1PMM
-CONTRACT_NAME=prediction-market-v2
-PORT=3001
-NETWORK=testnet
-NODE_ENV=development
-ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3002
-```
-
-## API Endpoints
-
-| Endpoint | Description |
-|----------|-------------|
-| `GET /api/rounds` | List all rounds |
-| `GET /api/rounds/:id` | Get specific round |
-| `GET /api/bets` | List all bets (filter by `?roundId=X&user=Y`) |
-| `GET /api/prices` | Current BTC/STX prices |
-| `POST /api/chainhook` | Webhook for blockchain events |
-
 ## Security
 
+- Pool creators can only settle pools after expiry
+- Deposits locked until settlement
+- Refunds available if pools expire unsettled
 - Admin functions restricted to contract deployer
-- `/admin` page protected by wallet verification
-- STX transfers validated on-chain
-- Rate limiting: 100 requests per minute
-- CORS restricted to allowed origins in production
+- STX/USDCx transfers validated on-chain
 
 ## License
 
@@ -165,4 +179,4 @@ MIT
 
 ---
 
-Built on [Stacks](https://stacks.co)
+Built on [Stacks](https://stacks.co) • Powered by Bitcoin

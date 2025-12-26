@@ -1,6 +1,6 @@
 ---
 id: 0
-name: Testnet deployment
+name: Prediction Pools Testnet Deployment
 network: testnet
 stacks-node: "https://api.testnet.hiro.so"
 bitcoin-node: "http://blockstack:blockstacksystem@bitcoind.testnet.stacks.co:18332"
@@ -11,28 +11,14 @@ plan:
         - contract-publish:
             contract-name: mock-usdcx
             expected-sender: ST1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX28M1PMM
-            cost: 30250
+            cost: 50000
             path: contracts/mock-usdcx.clar
-            anchor-block-only: true
-            clarity-version: 2
-        - contract-publish:
-            contract-name: prediction-market
-            expected-sender: ST1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX28M1PMM
-            cost: 80130
-            path: contracts/prediction-market.clar
-            anchor-block-only: true
-            clarity-version: 2
-        - contract-publish:
-            contract-name: prediction-market-v2
-            expected-sender: ST1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX28M1PMM
-            cost: 80130
-            path: contracts/prediction-market-v2.clar
             anchor-block-only: true
             clarity-version: 2
         - contract-publish:
             contract-name: prediction-pools
             expected-sender: ST1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX28M1PMM
-            cost: 156660
+            cost: 150000
             path: contracts/prediction-pools.clar
             anchor-block-only: true
             clarity-version: 2

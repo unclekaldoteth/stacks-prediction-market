@@ -1,0 +1,14 @@
+{
+    "name": "prediction-market",
+    "version": "1.0.0",
+    "description": "Stacks Prediction Market with Multi-Pool Support",
+    "scripts": {
+        "test": "vitest run",
+        "test:watch": "vitest"
+    },
+    "devDependencies": {
+        "@stacks/clarinet-sdk": "^3.12.0",
+        "@stacks/transactions": "^7.0.6",
+        "vitest": "^1.3.1"
+    }
+}
