@@ -1,10 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Use webpack instead of turbopack for better compatibility with wallet libraries
-  // Empty turbopack config tells Next.js we intentionally want to use webpack
-  turbopack: {},
-
   // Enable transpilation of wallet-related packages
   transpilePackages: [
     '@stacks/connect',
