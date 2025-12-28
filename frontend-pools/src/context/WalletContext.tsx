@@ -132,35 +132,21 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
         setIsLoading(true);
         try {
-            // Use the stable showConnect API instead of the new request API
-            const stacksConnect = await import('@stacks/connect');
+            // Use the connect() API from @stacks/connect v8.x
+            const { connect, getLocalStorage } = await import('@stacks/connect');
 
-            stacksConnect.showConnect({
-                appDetails: {
-                    name: 'Stacks Predictions',
-                    icon: window.location.origin + '/favicon.ico',
-                },
-                onFinish: () => {
-                    // Get address from localStorage after connection
-                    try {
-                        const userData = stacksConnect.getLocalStorage();
-                        if (userData?.addresses?.stx?.[0]?.address) {
-                            setIsConnected(true);
-                            setAddress(userData.addresses.stx[0].address);
-                            setLoginMethod('wallet');
-                        }
-                    } catch (e) {
-                        console.error('Failed to get address:', e);
-                    }
-                    setIsLoading(false);
-                },
-                onCancel: () => {
-                    console.log('User cancelled connection');
-                    setIsLoading(false);
-                },
-            });
+            await connect();
+
+            // Get address from localStorage after connection
+            const userData = getLocalStorage();
+            if (userData?.addresses?.stx?.[0]?.address) {
+                setIsConnected(true);
+                setAddress(userData.addresses.stx[0].address);
+                setLoginMethod('wallet');
+            }
         } catch (err) {
             console.error('Failed to connect wallet:', err);
+        } finally {
             setIsLoading(false);
         }
     }, [isClient]);
