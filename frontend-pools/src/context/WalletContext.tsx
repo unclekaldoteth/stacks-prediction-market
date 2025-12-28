@@ -134,36 +134,35 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
         setIsLoading(true);
         try {
-            const { request, getLocalStorage } = await import('@stacks/connect');
+            // Use the stable showConnect API instead of the new request API
+            const stacksConnect = await import('@stacks/connect');
 
-            const response = await request(
-                {
-                    forceWalletSelect: true,
-                    walletConnect: {
-                        projectId: WALLETCONNECT_PROJECT_ID,
-                    },
+            stacksConnect.showConnect({
+                appDetails: {
+                    name: 'Stacks Predictions',
+                    icon: window.location.origin + '/favicon.ico',
                 },
-                'getAddresses',
-                {}
-            );
-
-            if (response && response.addresses && response.addresses.length > 0) {
-                setIsConnected(true);
-                setLoginMethod('wallet');
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const stxAddress = response.addresses.find((addr: any) => addr.symbol === 'STX');
-                setAddress(stxAddress?.address || response.addresses[0].address);
-            } else {
-                const storage = getLocalStorage();
-                if (storage?.addresses?.stx?.[0]?.address) {
-                    setIsConnected(true);
-                    setAddress(storage.addresses.stx[0].address);
-                    setLoginMethod('wallet');
-                }
-            }
+                onFinish: () => {
+                    // Get address from localStorage after connection
+                    try {
+                        const userData = stacksConnect.getLocalStorage();
+                        if (userData?.addresses?.stx?.[0]?.address) {
+                            setIsConnected(true);
+                            setAddress(userData.addresses.stx[0].address);
+                            setLoginMethod('wallet');
+                        }
+                    } catch (e) {
+                        console.error('Failed to get address:', e);
+                    }
+                    setIsLoading(false);
+                },
+                onCancel: () => {
+                    console.log('User cancelled connection');
+                    setIsLoading(false);
+                },
+            });
         } catch (err) {
             console.error('Failed to connect wallet:', err);
-        } finally {
             setIsLoading(false);
         }
     }, [isClient]);
