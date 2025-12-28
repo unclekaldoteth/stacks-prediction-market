@@ -11,9 +11,12 @@
   "dependencies": {
     "@hirosystems/chainhooks-client": "^1.0.0",
     "@stacks/transactions": "^7.3.1",
-    "express": "^4.18.2"
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/express": "^4.17.21",
     "@types/node": "^20.10.0",
     "ts-node": "^10.9.2",

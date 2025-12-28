@@ -303,13 +303,13 @@ STACKS_API_URL=https://api.hiro.so
 - [x] Magic Link authentication
 - [x] Admin dashboard
 
-### Phase 4 - Backend Services (In Progress)
+### Phase 4 - Backend Services (Completed)
 
 - [x] Event indexer
 - [x] REST API
 - [x] Railway deployment
 - [x] Chainhooks integration
-- [ ] WebSocket real-time updates
+- [x] WebSocket real-time updates
 
 ---
 

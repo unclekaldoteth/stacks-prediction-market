@@ -1,6 +1,9 @@
 import express, { Request, Response, NextFunction } from 'express';
+import { createServer } from 'http';
+import { Server as SocketIOServer } from 'socket.io';
 
 const app = express();
+const httpServer = createServer(app);
 const PORT = process.env.PORT || 3001;
 
 // Environment configuration
@@ -8,6 +11,29 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',')
     : ['http://localhost:3000', 'http://localhost:3002', 'https://stacks-prediction-market.vercel.app'];
+
+// Socket.IO server with CORS
+const io = new SocketIOServer(httpServer, {
+    cors: {
+        origin: NODE_ENV === 'development' ? '*' : ALLOWED_ORIGINS,
+        methods: ['GET', 'POST'],
+    },
+});
+
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+    console.log(`[WebSocket] Client connected: ${socket.id}`);
+
+    // Send current state on connection
+    socket.emit('pools:list', Array.from(pools.values()));
+    socket.emit('rounds:list', Array.from(rounds.values()));
+
+    socket.on('disconnect', () => {
+        console.log(`[WebSocket] Client disconnected: ${socket.id}`);
+    });
+});
+
+
 
 // CORS Middleware - Production ready
 app.use((req, res, next) => {
@@ -425,6 +451,10 @@ function handlePoolCreated(data: PrintEvent['value'], blockHeight: number) {
     console.log(`   Token:    ${tokenSymbol}`);
     console.log(`   Outcomes: "${pool.outcomeA}" vs "${pool.outcomeB}"`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+    // Broadcast to all connected clients
+    io.emit('pool:created', pool);
+    io.emit('pools:list', Array.from(pools.values()));
 }
 
 function handlePoolBetPlaced(data: PrintEvent['value'], txHash: string, blockHeight: number) {
@@ -465,6 +495,10 @@ function handlePoolBetPlaced(data: PrintEvent['value'], txHash: string, blockHei
     console.log(`   Outcome: ${outcomeLabel}`);
     console.log(`   Amount:  ${(amount / 1000000).toFixed(2)} ${tokenSymbol}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+    // Broadcast to all connected clients
+    io.emit('pool:bet', { bet: poolBet, pool });
+    io.emit('pool:updated', pool);
 }
 
 function handlePoolSettled(data: PrintEvent['value']) {
@@ -487,6 +521,10 @@ function handlePoolSettled(data: PrintEvent['value']) {
     console.log(`   Winner:  ${winnerLabel}`);
     console.log(`   Total:   ${((data['total-pool'] || 0) / 1000000).toFixed(2)} ${tokenSymbol}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+    // Broadcast to all connected clients
+    io.emit('pool:settled', pool);
+    io.emit('pool:updated', pool);
 }
 
 function handlePoolWinningsClaimed(data: PrintEvent['value']) {
@@ -954,13 +992,14 @@ async function syncPool(poolId: number) {
     }
 }
 
-// Start server
-app.listen(PORT, () => {
+// Start server with Socket.IO
+httpServer.listen(PORT, () => {
     console.log('\n╔══════════════════════════════════════════════╗');
-    console.log('║  🎯 Prediction Market + Pools Indexer        ║');
+    console.log('║  Prediction Market + Pools Indexer           ║');
     console.log('╠══════════════════════════════════════════════╣');
     console.log(`║  Server:    http://localhost:${PORT}            ║`);
     console.log('║  Chainhook: /api/chainhook                   ║');
+    console.log('║  WebSocket: Enabled (Socket.IO)             ║');
     console.log('║  Contracts:                                  ║');
     console.log('║    - prediction-market-v2 (Rounds)           ║');
     console.log('║    - prediction-pools (Custom Pools)         ║');
