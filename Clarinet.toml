@@ -7,20 +7,28 @@ cache_dir = "./.cache"
 
 [contracts.prediction-market]
 path = "contracts/prediction-market.clar"
-clarity_version = 2
-epoch = 2.5
+clarity_version = 4
+epoch = 3.3
 
 [contracts.prediction-market-v2]
 path = "contracts/prediction-market-v2.clar"
-clarity_version = 2
-epoch = 2.5
+clarity_version = 4
+epoch = 3.3
 
 [contracts.mock-usdcx]
 path = "contracts/mock-usdcx.clar"
-clarity_version = 2
-epoch = 2.5
+clarity_version = 4
+epoch = 3.3
 
 [contracts.prediction-pools]
 path = "contracts/prediction-pools.clar"
-clarity_version = 2
-epoch = 2.5
+clarity_version = 4
+epoch = 3.3
+
+[contracts.prediction-pools-mainnet]
+path = "contracts/prediction-pools-mainnet.clar"
+clarity_version = 4
+epoch = 3.3
+
+[[contracts.prediction-pools-mainnet.requirements]]
+contract_id = "SP120SBRBQJ00MCWS7TM5R8WJNTTKD5K0HFRC2CNE.usdcx"

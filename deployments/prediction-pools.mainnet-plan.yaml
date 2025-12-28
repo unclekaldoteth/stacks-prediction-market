@@ -1,0 +1,18 @@
+---
+id: 0
+name: Prediction Pools Mainnet Deployment (Clarity 4)
+network: mainnet
+stacks-node: "https://api.hiro.so"
+bitcoin-node: "http://localhost:8332"
+plan:
+  batches:
+    - id: 0
+      transactions:
+        - contract-publish:
+            contract-name: prediction-pools
+            expected-sender: SP1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX32N685T
+            cost: 200000
+            path: contracts/prediction-pools-mainnet.clar
+            anchor-block-only: true
+            clarity-version: 4
+      epoch: "3.3"
