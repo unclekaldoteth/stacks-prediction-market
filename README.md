@@ -308,7 +308,7 @@ STACKS_API_URL=https://api.hiro.so
 - [x] Event indexer
 - [x] REST API
 - [x] Railway deployment
-- [ ] Chainhooks integration
+- [x] Chainhooks integration
 - [ ] WebSocket real-time updates
 
 ---

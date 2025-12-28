@@ -1,24 +1,43 @@
 # Chainhook Configuration for Stacks Prediction Market
-# This file configures Chainhook to listen for events from both contracts
-# Deploy with: chainhook predicates start chainhook.yaml --start-block <block_number>
+# This file configures Chainhook to listen for events from the prediction-pools contract
 
-# API endpoint for webhooks
-if_this:
-  scope: contract_call
-  contract_identifier: ST1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX28M1PMM.prediction-market-v2
-  method: "*"
-then_that:
-  http_post:
-    url: http://localhost:3001/api/chainhook
-    authorization_header: "Bearer prediction-market-secret"
+# For local development with clarinet:
+#   clarinet integrate
+#   chainhook predicates start chainhook.yaml --testnet
+
+# For mainnet with Hiro Platform:
+#   Use chainhook-mainnet.json and register at https://platform.hiro.so
 
 ---
-# Prediction Pools Contract Events
-if_this:
-  scope: contract_call
-  contract_identifier: ST1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX28M1PMM.prediction-pools
-  method: "*"
-then_that:
-  http_post:
-    url: http://localhost:3001/api/chainhook
-    authorization_header: "Bearer prediction-market-secret"
+# Prediction Pools Contract Events - Testnet
+name: prediction-pools-testnet
+version: 1
+chain: stacks
+networks:
+  testnet:
+    start_block: 1
+    if_this:
+      scope: print_event
+      contract_identifier: ST1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX28M1PMM.prediction-pools
+      contains: event
+    then_that:
+      http_post:
+        url: http://localhost:3001/api/chainhook
+        authorization_header: "Bearer prediction-market-secret"
+
+---
+# Prediction Pools Contract Events - Mainnet
+name: prediction-pools-mainnet
+version: 1
+chain: stacks
+networks:
+  mainnet:
+    start_block: 180000
+    if_this:
+      scope: print_event
+      contract_identifier: SP1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX32N685T.prediction-pools
+      contains: event
+    then_that:
+      http_post:
+        url: https://stacks-prediction-market-production.up.railway.app/api/chainhook
+        authorization_header: "Bearer prediction-market-secret"
