@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
-import { MAGIC_API_KEY } from '@/config';
+import { MAGIC_API_KEY, WALLETCONNECT_PROJECT_ID } from '@/config';
 
 interface WalletContextType {
     isConnected: boolean;
@@ -133,9 +133,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
         try {
             // Use the connect() API from @stacks/connect v8.x
+            // Pass walletConnectProjectId to enable WalletConnect option
             const { connect, getLocalStorage } = await import('@stacks/connect');
 
-            await connect();
+            await connect({
+                walletConnectProjectId: WALLETCONNECT_PROJECT_ID,
+            });
 
             // Get address from localStorage after connection
             const userData = getLocalStorage();
