@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useWallet } from '@/context/WalletContext';
+import { NETWORK } from '@/config';
 
 export default function Header() {
     const { isConnected, address, email, loginMethod, connect, connectWithGoogle, disconnect, isLoading } = useWallet();
@@ -12,6 +13,7 @@ export default function Header() {
     };
 
     const displayName = email || (address ? formatAddress(address) : '');
+    const isMainnet = NETWORK === 'mainnet';
 
     return (
         <>
@@ -30,10 +32,16 @@ export default function Header() {
                         </div>
 
                         {/* Network Badge */}
-                        <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/20 border border-orange-500/30">
-                            <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
-                            <span className="text-xs text-orange-400 font-medium">Testnet</span>
+                        <div className={`hidden md:flex items-center gap-2 px-3 py-1 rounded-full ${isMainnet
+                                ? 'bg-green-500/20 border border-green-500/30'
+                                : 'bg-orange-500/20 border border-orange-500/30'
+                            }`}>
+                            <div className={`w-2 h-2 rounded-full animate-pulse ${isMainnet ? 'bg-green-500' : 'bg-orange-500'
+                                }`}></div>
+                            <span className={`text-xs font-medium ${isMainnet ? 'text-green-400' : 'text-orange-400'
+                                }`}>{isMainnet ? 'Mainnet' : 'Testnet'}</span>
                         </div>
+
 
                         {/* Wallet/Login Button */}
                         {isConnected && address ? (

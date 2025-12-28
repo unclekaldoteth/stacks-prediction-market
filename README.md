@@ -22,7 +22,7 @@ Anyone can create custom prediction pools on any topic. Outcomes are settled by 
 - Bet on BTC price movements (UP/DOWN) in timed rounds
 - Join any user-created prediction pool
 - Bet with STX or USDCx tokens
-- Cross-platform wallet support (Leather, Xverse, WalletConnect)
+- Cross-platform wallet support via Stacks Connect and Reown AppKit
 - Simple Google login via Magic Link
 
 ### For Pool Creators
@@ -233,8 +233,8 @@ STACKS_API_URL=https://api.hiro.so
 ### Phase 3 - Frontend
 
 - [x] Next.js application
-- [x] Wallet integration (Leather, Xverse)
-- [x] WalletConnect support
+- [x] Wallet integration via Stacks Connect
+- [x] Reown AppKit for mobile wallets
 - [x] Magic Link authentication
 
 ### Phase 4 - Backend Services
