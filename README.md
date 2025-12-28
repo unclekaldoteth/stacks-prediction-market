@@ -1,15 +1,14 @@
 # Stacks Prediction Market
 
 A decentralized prediction market built on Stacks with Clarity 4, enabling BTC price predictions and user-created custom pools.
-Powered by Clarity 4 on Stacks.
 
-Stacks Prediction Market allows users to bet on BTC price movements or create their own prediction pools. Supports both STX and USDCx tokens with seamless wallet integration.
+Stacks Prediction Market allows users to bet on BTC price movements or create their own prediction pools. Supports both STX and USDCx tokens with seamless wallet integration including WalletConnect for mobile wallets.
 
 ---
 
 ## Why Stacks Prediction Market?
 
-Prediction markets unlock the wisdom of crowds for any outcome — but most are centralized, custodial, and limited in scope.
+Prediction markets unlock the wisdom of crowds for any outcome - but most are centralized, custodial, and limited in scope.
 
 **Stacks Prediction Market fixes this.**
 Anyone can create custom prediction pools on any topic. Outcomes are settled by pool creators with full transparency. Winners automatically claim their proportional share of the pool.
@@ -22,7 +21,8 @@ Anyone can create custom prediction pools on any topic. Outcomes are settled by 
 - Bet on BTC price movements (UP/DOWN) in timed rounds
 - Join any user-created prediction pool
 - Bet with STX or USDCx tokens
-- Cross-platform wallet support via Stacks Connect and Reown AppKit
+- Cross-platform wallet support via Stacks Connect and WalletConnect
+- Mobile wallet connectivity via Reown AppKit
 - Simple Google login via Magic Link
 
 ### For Pool Creators
@@ -71,6 +71,14 @@ stacks-prediction/
 - Real-time BTC/STX price feeds
 - User bet history and statistics
 - Admin dashboard for round management
+
+---
+
+## Live Demo
+
+**Frontend:** https://stacks-prediction-market.vercel.app
+
+**Backend API:** https://stacks-prediction-market-production.up.railway.app
 
 ---
 
@@ -138,6 +146,40 @@ SP120SBRBQJ00MCWS7TM5R8WJNTTKD5K0HFRC2CNE.usdcx
 
 ---
 
+## Wallet Integration
+
+The application supports multiple wallet connection methods:
+
+### Stacks Wallet (Leather/Xverse)
+Browser extension wallets for desktop users.
+
+### WalletConnect
+Mobile wallet connectivity via Reown AppKit. Supports any WalletConnect-compatible wallet.
+
+### Magic Link
+Email-based authentication for users without crypto wallets.
+
+### Implementation
+
+```typescript
+import { connect, getLocalStorage, disconnect } from '@stacks/connect';
+
+// Connect with WalletConnect support
+await connect({
+    walletConnectProjectId: 'your-project-id',
+    network: 'mainnet', // or 'testnet'
+});
+
+// Get connected address
+const userData = getLocalStorage();
+const address = userData?.addresses?.stx?.[0]?.address;
+
+// Disconnect
+await disconnect();
+```
+
+---
+
 ## Quick Start
 
 ### Prerequisites
@@ -202,7 +244,7 @@ NEXT_PUBLIC_CONTRACT_ADDRESS=SP1ZGGS886YCZHMFXJR1EK61ZP34FNWNSX32N685T
 NEXT_PUBLIC_NETWORK=mainnet
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id
 NEXT_PUBLIC_MAGIC_API_KEY=your_magic_key
-NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_API_URL=https://stacks-prediction-market-production.up.railway.app
 ```
 
 ### Backend (.env)
@@ -212,6 +254,29 @@ PORT=3001
 STACKS_NETWORK=mainnet
 STACKS_API_URL=https://api.hiro.so
 ```
+
+---
+
+## Tech Stack
+
+### Frontend
+- Next.js 15
+- React 19
+- TypeScript
+- Stacks Connect v8
+- Reown AppKit (WalletConnect)
+- Magic SDK
+
+### Backend
+- Node.js
+- Express
+- TypeScript
+- Hiro Chainhooks
+
+### Smart Contracts
+- Clarity 4
+- Stacks Blockchain
+- Epoch 3.3
 
 ---
 
@@ -230,17 +295,19 @@ STACKS_API_URL=https://api.hiro.so
 - [x] Dual-token betting
 - [x] Deposit/refund system
 
-### Phase 3 - Frontend
+### Phase 3 - Frontend (Completed)
 
 - [x] Next.js application
 - [x] Wallet integration via Stacks Connect
-- [x] Reown AppKit for mobile wallets
+- [x] WalletConnect via Reown AppKit
 - [x] Magic Link authentication
+- [x] Admin dashboard
 
-### Phase 4 - Backend Services
+### Phase 4 - Backend Services (In Progress)
 
 - [x] Event indexer
 - [x] REST API
+- [x] Railway deployment
 - [ ] Chainhooks integration
 - [ ] WebSocket real-time updates
 
@@ -263,3 +330,4 @@ MIT
 - Stacks Foundation for blockchain infrastructure
 - Hiro for developer tools and APIs
 - Circle for USDCx via xReserve
+- Reown for WalletConnect integration
