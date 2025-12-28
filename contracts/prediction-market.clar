@@ -86,7 +86,7 @@
             pool-up: u0,
             pool-down: u0,
             winning-direction: u0,
-            start-block: block-height,
+            start-block: stacks-block-height,
             end-block: u0
         })
         
@@ -98,7 +98,7 @@
             event: "round-started",
             round-id: new-round-id,
             start-price: start-price,
-            start-block: block-height
+            start-block: stacks-block-height
         })
         
         (ok new-round-id)
@@ -117,14 +117,14 @@
         ;; Update round status
         (map-set rounds round-id (merge round {
             status: STATUS_CLOSED,
-            end-block: block-height
+            end-block: stacks-block-height
         }))
         
         ;; Emit event for Chainhooks
         (print {
             event: "round-ended",
             round-id: round-id,
-            end-block: block-height,
+            end-block: stacks-block-height,
             pool-up: (get pool-up round),
             pool-down: (get pool-down round)
         })
@@ -182,7 +182,7 @@
         (asserts! (or (is-eq direction DIRECTION_UP) (is-eq direction DIRECTION_DOWN)) ERR_INVALID_DIRECTION)
         
         ;; Transfer STX to contract
-        (try! (stx-transfer? amount tx-sender (as-contract tx-sender)))
+        (try! (stx-transfer? amount tx-sender current-contract))
         
         ;; Record bet
         (map-set bets { round-id: round-id, user: tx-sender } {
@@ -234,7 +234,7 @@
         (map-set bets { round-id: round-id, user: claimer } (merge bet { claimed: true }))
         
         ;; Transfer winnings from contract to the claimer
-        (try! (as-contract (stx-transfer? user-share tx-sender claimer)))
+        (unwrap-panic (as-contract? ((with-stx user-share)) (unwrap-panic (stx-transfer? user-share tx-sender claimer))))
         
         ;; Emit event for Chainhooks
         (print {

@@ -150,16 +150,16 @@
 ;; Transfer tokens from user to contract
 (define-private (transfer-to-contract (token-type uint) (amount uint) (sender principal))
     (if (is-eq token-type TOKEN-STX)
-        (stx-transfer? amount sender (as-contract tx-sender))
-        (contract-call? .mock-usdcx transfer amount sender (as-contract tx-sender) none)
+        (stx-transfer? amount sender current-contract)
+        (contract-call? .mock-usdcx transfer amount sender current-contract none)
     )
 )
 
 ;; Transfer tokens from contract to user  
 (define-private (transfer-from-contract (token-type uint) (amount uint) (recipient principal))
     (if (is-eq token-type TOKEN-STX)
-        (as-contract (stx-transfer? amount tx-sender recipient))
-        (as-contract (contract-call? .mock-usdcx transfer amount tx-sender recipient none))
+        (as-contract? ((with-stx amount)) (unwrap-panic (stx-transfer? amount tx-sender recipient)))
+        (as-contract? ((with-ft .mock-usdcx "mock-usdcx" amount)) (unwrap-panic (contract-call? .mock-usdcx transfer amount tx-sender recipient none)))
     )
 )
 
@@ -210,8 +210,8 @@
                 total-b: u0,
                 settled: false,
                 winning-outcome: none,
-                created-at: block-height,
-                expiry: (+ block-height duration),
+                created-at: stacks-block-height,
+                expiry: (+ stacks-block-height duration),
                 deposit-claimed: false
             }
         )
@@ -229,7 +229,7 @@
             outcome-b: outcome-b,
             category: category,
             token-type: token-type,
-            expiry: (+ block-height duration)
+            expiry: (+ stacks-block-height duration)
         })
 
         (ok pool-id)
@@ -251,7 +251,7 @@
         )
         ;; Validations
         (asserts! (not (get settled pool)) ERR-POOL-SETTLED)
-        (asserts! (< block-height (get expiry pool)) ERR-POOL-EXPIRED)
+        (asserts! (< stacks-block-height (get expiry pool)) ERR-POOL-EXPIRED)
         (asserts! (or (is-eq outcome u0) (is-eq outcome u1)) ERR-INVALID-OUTCOME)
         (asserts! (>= amount min-bet) ERR-INVALID-AMOUNT)
 
@@ -444,7 +444,7 @@
             (refund-amount (+ (get amount-a user-bet) (get amount-b user-bet)))
         )
         ;; Pool must be expired
-        (asserts! (> block-height (get expiry pool)) ERR-POOL-NOT-EXPIRED)
+        (asserts! (> stacks-block-height (get expiry pool)) ERR-POOL-NOT-EXPIRED)
         ;; Pool must not be settled
         (asserts! (not (get settled pool)) ERR-POOL-SETTLED)
         ;; Not already refunded

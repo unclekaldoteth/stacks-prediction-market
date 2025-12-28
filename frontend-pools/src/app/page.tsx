@@ -7,7 +7,7 @@ import BetPanel from '@/components/BetPanel';
 import RoundsPanel from '@/components/RoundsPanel';
 import CreatePool from '@/components/CreatePool';
 import { Pool } from '@/services/poolsService';
-import { WalletProvider, useWallet } from '@/context/WalletContext';
+import { WalletProvider } from '@/context/WalletContext';
 
 type Tab = 'rounds' | 'pools';
 
@@ -16,7 +16,6 @@ function HomePage() {
   const [selectedPool, setSelectedPool] = useState<Pool | null>(null);
   const [showCreatePool, setShowCreatePool] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const { isConnected } = useWallet();
 
   const handlePoolCreated = () => {
     // Refresh the pool list

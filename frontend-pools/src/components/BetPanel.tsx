@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Pool, getUserBet, UserBet } from '@/services/poolsService';
 import { useWallet } from '@/context/WalletContext';
 import { CONTRACT_ADDRESS, CONTRACT_NAME_POOLS, formatTokenAmount, getTokenSymbol, TOKEN_USDCX, HIRO_API } from '@/config';
-import { uintCV, stringAsciiCV } from '@stacks/transactions';
+import { uintCV } from '@stacks/transactions';
 
 interface BetPanelProps {
     pool: Pool;

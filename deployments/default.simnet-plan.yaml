@@ -35,20 +35,20 @@ plan:
             contract-name: mock-usdcx
             emulated-sender: STC5KHM41H6WHAST7MWWDD807YSPRQKJ68T330BQ
             path: contracts/mock-usdcx.clar
-            clarity-version: 2
+            clarity-version: 4
         - emulated-contract-publish:
             contract-name: prediction-market
             emulated-sender: STC5KHM41H6WHAST7MWWDD807YSPRQKJ68T330BQ
             path: contracts/prediction-market.clar
-            clarity-version: 2
+            clarity-version: 4
         - emulated-contract-publish:
             contract-name: prediction-market-v2
             emulated-sender: STC5KHM41H6WHAST7MWWDD807YSPRQKJ68T330BQ
             path: contracts/prediction-market-v2.clar
-            clarity-version: 2
+            clarity-version: 4
         - emulated-contract-publish:
             contract-name: prediction-pools
             emulated-sender: STC5KHM41H6WHAST7MWWDD807YSPRQKJ68T330BQ
             path: contracts/prediction-pools.clar
-            clarity-version: 2
-      epoch: "2.5"
+            clarity-version: 4
+      epoch: "3.3"

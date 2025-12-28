@@ -12,7 +12,6 @@ interface PoolCardProps {
 export default function PoolCard({ pool, onSelect, currentBlock }: PoolCardProps) {
     const totalPool = pool.totalA + pool.totalB;
     const percentA = totalPool > 0 ? (pool.totalA / totalPool) * 100 : 50;
-    const percentB = totalPool > 0 ? (pool.totalB / totalPool) * 100 : 50;
 
     const isExpired = currentBlock > pool.expiry;
     const blocksRemaining = Math.max(0, pool.expiry - currentBlock);
@@ -53,8 +52,8 @@ export default function PoolCard({ pool, onSelect, currentBlock }: PoolCardProps
                             {pool.category}
                         </span>
                         <span className={`px-2 py-0.5 rounded text-xs ${pool.tokenType === TOKEN_USDCX
-                                ? 'bg-green-500/20 text-green-400'
-                                : 'bg-orange-500/20 text-orange-400'
+                            ? 'bg-green-500/20 text-green-400'
+                            : 'bg-orange-500/20 text-orange-400'
                             }`}>
                             {getTokenSymbol(pool.tokenType)}
                         </span>

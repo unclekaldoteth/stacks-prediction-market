@@ -1,9 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
-import { WALLETCONNECT_PROJECT_ID, MAGIC_API_KEY } from '@/config';
-
-type OAuthProvider = 'google' | 'github' | 'facebook' | 'apple';
+import { MAGIC_API_KEY } from '@/config';
 
 interface WalletContextType {
     isConnected: boolean;

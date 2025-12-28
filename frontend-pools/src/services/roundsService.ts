@@ -147,7 +147,7 @@ export async function getBTCPrice(): Promise<number> {
             const data = await response.json();
             return data.bitcoin?.usd || 0;
         }
-    } catch (error) {
+    } catch {
         console.warn('CoinGecko API unavailable, using fallback price');
     }
 

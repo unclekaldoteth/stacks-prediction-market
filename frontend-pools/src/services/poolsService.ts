@@ -35,6 +35,7 @@ export async function getAllPools(): Promise<Pool[]> {
         if (response.ok) {
             const data = await response.json();
             // Ensure data matches frontend format
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return data.map((p: any) => ({
                 poolId: p.poolId,
                 title: p.title || '',
