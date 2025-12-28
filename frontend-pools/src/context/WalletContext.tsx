@@ -133,7 +133,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
         try {
             // Use the connect() API from @stacks/connect v8.x
-            // Pass walletConnectProjectId to enable WalletConnect option
+            // Note: v8 connect() only accepts walletConnectProjectId and network options
             const { connect, getLocalStorage } = await import('@stacks/connect');
 
             await connect({
