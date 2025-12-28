@@ -1,15 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-
-  // Disable experimental features that may cause module resolution issues
-  experimental: {
-    // Ensure static generation doesn't cause issues with dynamic wallet imports
-    serverActions: {
-      bodySizeLimit: '2mb',
-    },
-  },
+  // Use webpack instead of turbopack for better compatibility with wallet libraries
+  // Empty turbopack config tells Next.js we intentionally want to use webpack
+  turbopack: {},
 
   // Enable transpilation of wallet-related packages
   transpilePackages: [
